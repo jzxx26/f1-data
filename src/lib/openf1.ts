@@ -146,6 +146,9 @@ export interface SessionResultData {
   meeting_key?: number;
   session_key?: number;
   points?: number;
+  q1_time?: number | null;
+  q2_time?: number | null;
+  q3_time?: number | null;
 }
 
 export interface RaceMeeting {
@@ -343,14 +346,12 @@ export const openf1Client = {
   async getCarData(
     sessionKey: number,
     driverNumber: number,
-    dateStart: string,
-    dateEnd: string
+    lapNumber: number
   ): Promise<CarData[]> {
     return fetchJson<CarData[]>("car_data", {
       session_key: sessionKey,
       driver_number: driverNumber,
-      "date>=": dateStart,
-      "date<=": dateEnd,
+      lap_number: lapNumber,
     });
   },
 

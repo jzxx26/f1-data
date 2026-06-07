@@ -465,12 +465,21 @@ def get_session_result(
                 gap = row.get("Time")
                 if isinstance(gap, pd.Timedelta):
                     gap = gap.total_seconds()
+
+                def _td(value):
+                    if isinstance(value, pd.Timedelta):
+                        return value.total_seconds()
+                    return _clean(value)
+
                 out.append({
                     "driver_number": drv,
                     "position": int(pos) if not pd.isna(pos) else None,
                     "number_of_laps": int(row.get("Laps")) if not pd.isna(row.get("Laps", float("nan"))) else None,
                     "gap_to_leader": _clean(gap),
                     "points": _clean(row.get("Points")),
+                    "q1_time": _td(row.get("Q1")),
+                    "q2_time": _td(row.get("Q2")),
+                    "q3_time": _td(row.get("Q3")),
                     "session_key": sk,
                     "meeting_key": y * 100 + r,
                 })

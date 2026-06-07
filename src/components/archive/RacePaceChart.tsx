@@ -6,11 +6,9 @@ import type { Driver, LapData } from "@/lib/openf1";
 import { formatTime } from "@/lib/utils";
 import { useMemo } from "react";
 import {
-  Bar,
   CartesianGrid,
-  Cell,
-  ComposedChart,
   Scatter,
+  ScatterChart,
   Tooltip,
   XAxis,
   YAxis,
@@ -105,7 +103,10 @@ export function RacePaceChart({
 
   const yAxisDomain = useMemo<[number, number]>(() => {
     if (data.length === 0) return [0, 1];
-    const allValues = data.flatMap((row) => [row.best, row.worst, row.median]);
+    const allValues = data
+      .flatMap((row) => [row.best, row.worst, row.median])
+      .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+    if (allValues.length === 0) return [0, 1];
     const min = Math.min(...allValues);
     const max = Math.max(...allValues);
     return [min - 0.5, max + 0.5];
@@ -173,7 +174,7 @@ export function RacePaceChart({
         </div>
       ) : (
         <ChartContainer height={300}>
-          <ComposedChart
+          <ScatterChart
             data={data}
             margin={{ top: 10, right: 20, left: 10, bottom: 10 }}
           >
@@ -183,6 +184,8 @@ export function RacePaceChart({
             />
             <XAxis
               dataKey="acronym"
+              type="category"
+              allowDuplicatedCategory={false}
               stroke="#9ca3af"
               tickLine={false}
               axisLine={{ stroke: "rgba(255,255,255,0.15)" }}
@@ -194,6 +197,7 @@ export function RacePaceChart({
               height={50}
             />
             <YAxis
+              type="number"
               stroke="#9ca3af"
               tickLine={false}
               axisLine={{ stroke: "rgba(255,255,255,0.15)" }}
@@ -211,31 +215,27 @@ export function RacePaceChart({
             />
             <Tooltip
               content={renderTooltip}
-              cursor={{ fill: "rgba(255,255,255,0.04)" }}
-            />
-            <Bar
-              dataKey="median"
-              barSize={20}
-              radius={[4, 4, 0, 0]}
-              minPointSize={() => 0}
-            >
-              {data.map((row) => (
-                <Cell key={row.acronym} fill={row.color} fillOpacity={0.6} />
-              ))}
-            </Bar>
-            <Scatter
-              dataKey="best"
-              shape="diamond"
-              fill="#facc15"
-              name="Best clean lap"
+              cursor={{ strokeDasharray: "3 3", stroke: "rgba(255,255,255,0.2)" }}
             />
             <Scatter
-              dataKey="worst"
-              shape="circle"
-              fill="#f87171"
               name="Worst clean lap"
+              dataKey="worst"
+              fill="#f87171"
+              shape="triangle"
             />
-          </ComposedChart>
+            <Scatter
+              name="Median"
+              dataKey="median"
+              fill="#ffffff"
+              shape="circle"
+            />
+            <Scatter
+              name="Best clean lap"
+              dataKey="best"
+              fill="#facc15"
+              shape="diamond"
+            />
+          </ScatterChart>
         </ChartContainer>
       )}
     </section>

@@ -173,17 +173,20 @@ export function useDetailedTelemetry(
   sessionKey?: number,
   driverNumber1?: number,
   driverNumber2?: number,
-  lapNumber?: number,
+  lapNumber1?: number,
+  lapNumber2?: number,
   enabled = true
 ) {
   const driversToFetch = useMemo(() => {
     const list: number[] = [];
-    if (driverNumber1 !== undefined && !Number.isNaN(driverNumber1)) list.push(driverNumber1);
-    if (driverNumber2 !== undefined && !Number.isNaN(driverNumber2)) list.push(driverNumber2);
+    if (driverNumber1 !== undefined && !Number.isNaN(driverNumber1))
+      list.push(driverNumber1);
+    if (driverNumber2 !== undefined && !Number.isNaN(driverNumber2))
+      list.push(driverNumber2);
     return list;
   }, [driverNumber1, driverNumber2]);
 
-  // Fetch all laps for the session to find start/end times of the lap
+  // Fetch all laps for both drivers so the chart can list lap options + best lap.
   const lapsQuery = useQuery({
     queryKey: ["openf1", "detailed-laps", sessionKey, driversToFetch.join("-")],
     queryFn: () => {
@@ -194,7 +197,8 @@ export function useDetailedTelemetry(
     staleTime: 60_000,
   });
 
-  // Fetch car data for the requested lap of the driver
+  // Fetch car data per driver at their own lap number — pole laps for d1 and d2
+  // are rarely on the same lap, so we shouldn't force them to share.
   const carDataQuery = useQuery({
     queryKey: [
       "openf1",
@@ -202,31 +206,23 @@ export function useDetailedTelemetry(
       sessionKey,
       driverNumber1,
       driverNumber2,
-      lapNumber,
-      lapsQuery.data?.length,
+      lapNumber1,
+      lapNumber2,
     ],
     queryFn: async () => {
-      if (!sessionKey || !lapNumber || !lapsQuery.data) return [];
+      if (!sessionKey) return [];
 
-      const promises = driversToFetch.map(async (driverNum) => {
-        const driverLaps = lapsQuery.data.filter((l) => l.driver_number === driverNum);
-        const lap = driverLaps.find((l) => l.lap_number === lapNumber);
-        
-        if (!lap || !lap.date_start || !lap.lap_duration) {
-          return { driverNum, data: [] };
-        }
+      const targets: Array<{ driverNum: number; lap: number }> = [];
+      if (driverNumber1 !== undefined && lapNumber1 !== undefined) {
+        targets.push({ driverNum: driverNumber1, lap: lapNumber1 });
+      }
+      if (driverNumber2 !== undefined && lapNumber2 !== undefined) {
+        targets.push({ driverNum: driverNumber2, lap: lapNumber2 });
+      }
 
-        const dateStart = lap.date_start;
-        const startMs = new Date(dateStart).getTime();
-        const dateEnd = new Date(startMs + lap.lap_duration * 1000).toISOString();
-
+      const promises = targets.map(async ({ driverNum, lap }) => {
         try {
-          const data = await openf1Client.getCarData(
-            sessionKey,
-            driverNum,
-            dateStart,
-            dateEnd
-          );
+          const data = await openf1Client.getCarData(sessionKey, driverNum, lap);
           return { driverNum, data };
         } catch (err) {
           console.error(`Error fetching car data for driver ${driverNum}:`, err);
@@ -238,11 +234,9 @@ export function useDetailedTelemetry(
     },
     enabled: Boolean(
       enabled &&
-      sessionKey &&
-      lapNumber &&
-      lapsQuery.data &&
-      lapsQuery.data.length > 0 &&
-      driversToFetch.length > 0
+        sessionKey &&
+        ((driverNumber1 !== undefined && lapNumber1 !== undefined) ||
+          (driverNumber2 !== undefined && lapNumber2 !== undefined))
     ),
     staleTime: 5 * 60_000,
   });

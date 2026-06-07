@@ -19,8 +19,12 @@ import type { Driver, StintData } from "@/lib/openf1";
 import { cn } from "@/lib/utils";
 import { useEffect, useMemo, useState } from "react";
 
+import { BiggestMoversCard } from "./BiggestMoversCard";
+import { ConsistencyCard } from "./ConsistencyCard";
 import { FastestLapsCard } from "./FastestLapsCard";
+import { PoleLapCard } from "./PoleLapCard";
 import { PositionChart } from "./PositionChart";
+import { QualifyingResultsTable } from "./QualifyingResultsTable";
 import { RacePaceChart } from "./RacePaceChart";
 import { RaceResultsTable } from "./RaceResultsTable";
 import { SectorGapChart } from "./SectorGapChart";
@@ -95,21 +99,20 @@ export function RaceArchive() {
   const meetingOptions = meetingsQuery.data ?? [];
   return (
     <div className="flex w-full flex-col gap-6 lg:gap-8">
-      <header className="rounded-3xl border border-white/5 bg-gradient-to-br from-white/[0.07] to-white/[0.02] p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.04)]">
+      <header className="rounded-2xl border border-white/[0.06] bg-[#111114] p-6">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-2xl space-y-3">
-            <div className="flex items-center gap-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.4em] text-white/50">
+            <div className="flex items-center gap-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.4em] text-white/45">
                 Race Archive
               </p>
-              
-              <div className="flex rounded-xl bg-black/40 p-0.5 border border-white/10">
+              <div className="flex rounded-lg border border-white/10 bg-black/40 p-0.5">
                 <button
                   onClick={() => setSessionType("Race")}
                   className={cn(
-                    "rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition",
+                    "rounded-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition",
                     sessionType === "Race"
-                      ? "bg-white/10 text-white shadow-[0_1px_2px_rgba(0,0,0,0.4)]"
+                      ? "bg-white/15 text-white"
                       : "text-white/40 hover:text-white"
                   )}
                 >
@@ -118,9 +121,9 @@ export function RaceArchive() {
                 <button
                   onClick={() => setSessionType("Qualifying")}
                   className={cn(
-                    "rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition",
+                    "rounded-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition",
                     sessionType === "Qualifying"
-                      ? "bg-white/10 text-white shadow-[0_1px_2px_rgba(0,0,0,0.4)]"
+                      ? "bg-white/15 text-white"
                       : "text-white/40 hover:text-white"
                   )}
                 >
@@ -128,14 +131,18 @@ export function RaceArchive() {
                 </button>
               </div>
             </div>
-            
-            <h1 className="text-2xl font-semibold text-white sm:text-3xl">
-              Replay historical battles
+
+            <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+              {sessionQuery.data?.location ?? "Select a race"}
             </h1>
-            <p className="text-sm text-white/60">
-              Filter sessions by season, meeting, or driver and compare telemetry
-              traces side-by-side. Pit strategy information is summarised below
-              to help dissect the story of the race.
+            <p className="text-sm text-white/55">
+              {sessionQuery.data
+                ? `${
+                    sessionQuery.data.country_name ?? ""
+                  } · ${
+                    sessionQuery.data.session_name ?? "Race"
+                  } · session ${sessionQuery.data.session_key}`
+                : "Filter by season and pick a race to load full post-race analytics — pace, sectors, tyres, telemetry, weather."}
             </p>
           </div>
           <SearchPanel
@@ -148,14 +155,36 @@ export function RaceArchive() {
         </div>
       </header>
 
-      {/* Race results table — all drivers */}
-      {sessionType === "Race" && (
+      {/* Top-of-page result block, swaps based on session type */}
+      {sessionType === "Race" ? (
         <RaceResultsTable
           results={resultsQuery.data ?? []}
           drivers={driversQuery.data ?? []}
           isLoading={resultsQuery.isLoading}
         />
+      ) : (
+        <>
+          <PoleLapCard
+            results={resultsQuery.data ?? []}
+            laps={allLapsQuery.data ?? []}
+            drivers={driversQuery.data ?? []}
+            isLoading={resultsQuery.isLoading || allLapsQuery.isLoading}
+          />
+          <QualifyingResultsTable
+            results={resultsQuery.data ?? []}
+            drivers={driversQuery.data ?? []}
+            isLoading={resultsQuery.isLoading}
+          />
+        </>
       )}
+
+      {/* Driver selector — drives every comparison chart below */}
+      <DriverSelector
+        drivers={driversQuery.data ?? []}
+        selected={selectedDrivers}
+        onChange={setSelectedDrivers}
+        disabled={driversQuery.isLoading}
+      />
 
       {/* Track conditions overview */}
       <TrackConditionsCard
@@ -196,13 +225,22 @@ export function RaceArchive() {
         />
       </section>
 
-      {/* Driver selector for the comparison views below */}
-      <DriverSelector
-        drivers={driversQuery.data ?? []}
-        selected={selectedDrivers}
-        onChange={setSelectedDrivers}
-        disabled={driversQuery.isLoading}
-      />
+      {/* Consistency + biggest movers */}
+      {sessionType === "Race" && (
+        <section className="grid gap-6 lg:grid-cols-2 lg:gap-8">
+          <ConsistencyCard
+            laps={allLapsQuery.data ?? []}
+            drivers={driversQuery.data ?? []}
+            isLoading={allLapsQuery.isLoading}
+          />
+          <BiggestMoversCard
+            positions={positionsQuery.data ?? []}
+            results={resultsQuery.data ?? []}
+            drivers={driversQuery.data ?? []}
+            isLoading={positionsQuery.isLoading || resultsQuery.isLoading}
+          />
+        </section>
+      )}
 
       {/* Row 1: Telemetry + Pit Strategy */}
       <section className="grid gap-6 lg:grid-cols-[2fr,1fr] lg:gap-8">

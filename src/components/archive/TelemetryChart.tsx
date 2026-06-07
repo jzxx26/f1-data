@@ -42,7 +42,8 @@ export function TelemetryChart({
   // Detailed telemetry state
   const [d1, setD1] = useState<number | undefined>(undefined);
   const [d2, setD2] = useState<number | undefined>(undefined);
-  const [selectedLap, setSelectedLap] = useState<number | undefined>(undefined);
+  const [lap1, setLap1] = useState<number | undefined>(undefined);
+  const [lap2, setLap2] = useState<number | undefined>(undefined);
   // Initialize drivers when loaded
   useEffect(() => {
     if (drivers && drivers.length > 0) {
@@ -54,48 +55,73 @@ export function TelemetryChart({
       }
     }
   }, [drivers, d1, d2]);
-  const { laps, carData, isLoading: isDetailedLoading, isFetching: isDetailedFetching } = useDetailedTelemetry(
-    sessionKey,
-    d1,
-    d2,
-    selectedLap,
-    mode === "detailed"
-  );
-  const availableLaps = useMemo(() => {
-    if (!laps || laps.length === 0 || d1 === undefined) return [];
+  const {
+    laps,
+    carData,
+    isLoading: isDetailedLoading,
+    isFetching: isDetailedFetching,
+  } = useDetailedTelemetry(sessionKey, d1, d2, lap1, lap2, mode === "detailed");
+
+  const fastestLapFor = (driverNum?: number) => {
+    if (!laps || driverNum === undefined) return undefined;
+    let best: { lap: number; time: number } | null = null;
+    laps.forEach((l) => {
+      if (l.driver_number !== driverNum) return;
+      if (!l.lap_duration || l.is_pit_out_lap) return;
+      if (!best || l.lap_duration < best.time) {
+        best = { lap: l.lap_number, time: l.lap_duration };
+      }
+    });
+    return best ? (best as { lap: number; time: number }).lap : undefined;
+  };
+
+  const lapsForD1 = useMemo(() => {
+    if (!laps || d1 === undefined) return [];
     const set = new Set(
       laps.filter((l) => l.driver_number === d1).map((l) => l.lap_number)
     );
     return Array.from(set).sort((a, b) => a - b);
   }, [laps, d1]);
-  // Handle selected lap auto-assignment
+
+  const lapsForD2 = useMemo(() => {
+    if (!laps || d2 === undefined) return [];
+    const set = new Set(
+      laps.filter((l) => l.driver_number === d2).map((l) => l.lap_number)
+    );
+    return Array.from(set).sort((a, b) => a - b);
+  }, [laps, d2]);
+
+  // Default each driver's lap to their personal fastest clean lap.
   useEffect(() => {
-    if (availableLaps.length > 0) {
-      if (selectedLap === undefined || !availableLaps.includes(selectedLap)) {
-        setSelectedLap(availableLaps.at(-1));
-      }
-    }
-  }, [availableLaps, selectedLap]);
+    if (lapsForD1.length === 0) return;
+    if (lap1 !== undefined && lapsForD1.includes(lap1)) return;
+    setLap1(fastestLapFor(d1) ?? lapsForD1.at(-1));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lapsForD1, d1]);
+
+  useEffect(() => {
+    if (lapsForD2.length === 0) return;
+    if (lap2 !== undefined && lapsForD2.includes(lap2)) return;
+    setLap2(fastestLapFor(d2) ?? lapsForD2.at(-1));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lapsForD2, d2]);
   const d1Info = drivers.find((d) => d.driver_number === d1);
   const d2Info = drivers.find((d) => d.driver_number === d2);
   const d1Color = d1Info ? getDriverColor(d1Info) : "#ffffff";
   const d2Color = d2Info ? getDriverColor(d2Info) : "#a1a1aa";
   const detailedChartData = useMemo(() => {
-    if (!laps || laps.length === 0 || !selectedLap || d1 === undefined) return [];
-    const driver1Lap = laps.find(
-      (l) => l.driver_number === d1 && l.lap_number === selectedLap
-    );
-    const driver2Lap = laps.find(
-      (l) => l.driver_number === d2 && l.lap_number === selectedLap
-    );
-    const d1Start = driver1Lap?.date_start
-      ? new Date(driver1Lap.date_start).getTime()
-      : null;
-    const d2Start = driver2Lap?.date_start
-      ? new Date(driver2Lap.date_start).getTime()
-      : null;
+    if (d1 === undefined && d2 === undefined) return [];
     const d1CarData = carData.find((d) => d.driverNum === d1)?.data ?? [];
     const d2CarData = carData.find((d) => d.driverNum === d2)?.data ?? [];
+
+    // Anchor t=0 at the first car-data point per driver — lap.date_start is
+    // often null from FastF1 so we can't rely on it.
+    const anchor = (points: typeof d1CarData) =>
+      points.length > 0 ? new Date(points[0].date).getTime() : null;
+
+    const d1Start = anchor(d1CarData);
+    const d2Start = anchor(d2CarData);
+
     const combinedList: Array<{
       elapsed: number;
       speed1?: number;
@@ -105,40 +131,32 @@ export function TelemetryChart({
       throttle2?: number;
       brake2?: number;
     }> = [];
-    if (d1Start) {
+    if (d1Start !== null) {
       d1CarData.forEach((p) => {
         const elapsed = (new Date(p.date).getTime() - d1Start) / 1000;
-        if (
-          elapsed >= 0 &&
-          (!driver1Lap?.lap_duration || elapsed <= driver1Lap.lap_duration)
-        ) {
-          combinedList.push({
-            elapsed: Number(elapsed.toFixed(2)),
-            speed1: p.speed,
-            throttle1: p.throttle,
-            brake1: p.brake,
-          });
-        }
+        if (!Number.isFinite(elapsed) || elapsed < 0) return;
+        combinedList.push({
+          elapsed: Number(elapsed.toFixed(2)),
+          speed1: p.speed,
+          throttle1: p.throttle,
+          brake1: p.brake,
+        });
       });
     }
-    if (d2Start && d2 !== undefined) {
+    if (d2Start !== null && d2 !== undefined) {
       d2CarData.forEach((p) => {
         const elapsed = (new Date(p.date).getTime() - d2Start) / 1000;
-        if (
-          elapsed >= 0 &&
-          (!driver2Lap?.lap_duration || elapsed <= driver2Lap.lap_duration)
-        ) {
-          combinedList.push({
-            elapsed: Number(elapsed.toFixed(2)),
-            speed2: p.speed,
-            throttle2: p.throttle,
-            brake2: p.brake,
-          });
-        }
+        if (!Number.isFinite(elapsed) || elapsed < 0) return;
+        combinedList.push({
+          elapsed: Number(elapsed.toFixed(2)),
+          speed2: p.speed,
+          throttle2: p.throttle,
+          brake2: p.brake,
+        });
       });
     }
     return combinedList.sort((a, b) => a.elapsed - b.elapsed);
-  }, [carData, laps, selectedLap, d1, d2]);
+  }, [carData, d1, d2]);
   const chartLines = useMemo(
     () =>
       drivers.map((driver) => ({
@@ -368,13 +386,30 @@ export function TelemetryChart({
         </>
       ) : (
         <div className="bg-zinc-950/50 p-4">
-          <div className="mb-4 grid grid-cols-3 gap-3 rounded-2xl border border-white/5 bg-zinc-900/60 p-3">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-white/40">
+              Comparing each driver&apos;s personal fastest lap by default
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                const best1 = fastestLapFor(d1);
+                const best2 = fastestLapFor(d2);
+                if (best1) setLap1(best1);
+                if (best2) setLap2(best2);
+              }}
+              className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white/70 hover:bg-white/10"
+            >
+              Reset to fastest
+            </button>
+          </div>
+          <div className="mb-4 grid grid-cols-2 gap-3 rounded-2xl border border-white/[0.06] bg-[#0f0f12] p-3 lg:grid-cols-4">
             <div>
               <label className="block text-[10px] font-bold uppercase tracking-wider text-white/40">
                 Driver 1
               </label>
               <select
-                value={d1}
+                value={d1 ?? ""}
                 onChange={(e) => setD1(Number(e.target.value))}
                 className="mt-1 w-full rounded-lg border border-white/10 bg-black px-2 py-1.5 text-xs text-white outline-none"
               >
@@ -387,11 +422,38 @@ export function TelemetryChart({
             </div>
             <div>
               <label className="block text-[10px] font-bold uppercase tracking-wider text-white/40">
+                Lap (D1)
+              </label>
+              <select
+                value={lap1 ?? ""}
+                onChange={(e) =>
+                  setLap1(e.target.value ? Number(e.target.value) : undefined)
+                }
+                className="mt-1 w-full rounded-lg border border-white/10 bg-black px-2 py-1.5 text-xs text-white outline-none"
+              >
+                {lapsForD1.map((lap) => {
+                  const isFastest = lap === fastestLapFor(d1);
+                  return (
+                    <option key={lap} value={lap}>
+                      Lap {lap}
+                      {isFastest ? " ★ fastest" : ""}
+                    </option>
+                  );
+                })}
+                {lapsForD1.length === 0 && (
+                  <option value="">No laps</option>
+                )}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-white/40">
                 Driver 2
               </label>
               <select
                 value={d2 ?? ""}
-                onChange={(e) => setD2(e.target.value ? Number(e.target.value) : undefined)}
+                onChange={(e) =>
+                  setD2(e.target.value ? Number(e.target.value) : undefined)
+                }
                 className="mt-1 w-full rounded-lg border border-white/10 bg-black px-2 py-1.5 text-xs text-white outline-none"
               >
                 <option value="">None</option>
@@ -406,27 +468,36 @@ export function TelemetryChart({
             </div>
             <div>
               <label className="block text-[10px] font-bold uppercase tracking-wider text-white/40">
-                Lap Number
+                Lap (D2)
               </label>
               <select
-                value={selectedLap ?? ""}
-                onChange={(e) => setSelectedLap(Number(e.target.value))}
-                className="mt-1 w-full rounded-lg border border-white/10 bg-black px-2 py-1.5 text-xs text-white outline-none"
+                value={lap2 ?? ""}
+                onChange={(e) =>
+                  setLap2(e.target.value ? Number(e.target.value) : undefined)
+                }
+                className="mt-1 w-full rounded-lg border border-white/10 bg-black px-2 py-1.5 text-xs text-white outline-none disabled:opacity-40"
+                disabled={d2 === undefined}
               >
-                {availableLaps.map((lap) => (
-                  <option key={lap} value={lap}>
-                    Lap {lap}
-                  </option>
-                ))}
-                {availableLaps.length === 0 && (
-                  <option value="">No laps available</option>
+                {lapsForD2.map((lap) => {
+                  const isFastest = lap === fastestLapFor(d2);
+                  return (
+                    <option key={lap} value={lap}>
+                      Lap {lap}
+                      {isFastest ? " ★ fastest" : ""}
+                    </option>
+                  );
+                })}
+                {lapsForD2.length === 0 && (
+                  <option value="">No laps</option>
                 )}
               </select>
             </div>
           </div>
           {!hasDetailedData ? (
             <div className="flex h-[320px] items-center justify-center text-xs text-white/40">
-              {isDetailedLoading ? "Loading lap telemetry..." : "No detailed telemetry data available for this lap."}
+              {isDetailedLoading
+                ? "Loading lap telemetry..."
+                : "No detailed telemetry data available for the selected laps."}
             </div>
           ) : (
             <div className="flex flex-col gap-4">

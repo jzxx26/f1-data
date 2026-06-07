@@ -180,9 +180,9 @@ export function SectorGapChart({ laps, drivers, isLoading }: SectorGapChartProps
                 <XAxis dataKey="driver" stroke="#9ca3af" tickLine={false} axisLine={false} fontSize={11} tick={{ fill: "#e5e7eb", fontWeight: 600 }} />
                 <YAxis stroke="#9ca3af" tickLine={false} axisLine={{ stroke: "rgba(255,255,255,0.15)" }} fontSize={10} tick={{ fill: "#9ca3af" }} tickFormatter={(v: number) => `${v.toFixed(0)}s`} />
                 <Tooltip cursor={{ fill: "rgba(255,255,255,0.04)" }} content={renderTooltip} wrapperStyle={{ outline: "none" }} />
-                <Bar dataKey="s1" stackId="sectors" fill="#f43f5e" fillOpacity={0.85} name="Sector 1" minPointSize={() => 0} />
-                <Bar dataKey="s2" stackId="sectors" fill="#f59e0b" fillOpacity={0.85} name="Sector 2" minPointSize={() => 0} />
-                <Bar dataKey="s3" stackId="sectors" fill="#8b5cf6" fillOpacity={0.85} name="Sector 3" radius={[4, 4, 0, 0]} minPointSize={() => 0} />
+                <Bar dataKey="s1" stackId="sectors" fill="#f43f5e" fillOpacity={0.85} name="Sector 1" minPointSize={0} />
+                <Bar dataKey="s2" stackId="sectors" fill="#f59e0b" fillOpacity={0.85} name="Sector 2" minPointSize={0} />
+                <Bar dataKey="s3" stackId="sectors" fill="#8b5cf6" fillOpacity={0.85} name="Sector 3" radius={[4, 4, 0, 0]} minPointSize={0} />
                 <Legend iconType="square" iconSize={10} wrapperStyle={{ paddingTop: 8, color: "rgba(255,255,255,0.55)", fontSize: 11 }} />
               </BarChart>
           </ChartContainer>
