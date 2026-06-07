@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     template: "%s | Apex F1 Live",
   },
   description:
-    "A live motorsport telemetry dashboard powered by OpenF1, featuring race-day insights, speed traces, and historical archives.",
+    "A live motorsport telemetry dashboard powered by FastF1, featuring race-day insights, speed traces, and historical archives.",
   metadataBase: new URL("https://f1-live-dashboard.vercel.app"),
   openGraph: {
     title: "Apex F1 Live",

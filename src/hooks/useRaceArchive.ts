@@ -3,9 +3,13 @@
 import {
   openf1Client,
   type Driver,
+  type LapData,
+  type PositionData,
   type RaceMeeting,
   type Session,
+  type SessionResultData,
   type StintData,
+  type WeatherData,
 } from "@/lib/openf1";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
@@ -69,23 +73,23 @@ export function useRaceMeetings(filters: RaceFilters) {
         return bTime - aTime;
       });
     },
-    staleTime: 5 * 60_000,
+    staleTime: 10 * 60_000,
   });
 }
 
-export function useMeetingRaceSession(meetingKey?: number) {
+export function useMeetingRaceSession(meetingKey?: number, sessionType: string = "Race") {
   return useQuery<Session | null>({
-    queryKey: ["openf1", "meeting-session", meetingKey],
+    queryKey: ["openf1", "meeting-session", meetingKey, sessionType],
     queryFn: async () => {
       if (!meetingKey) return null;
       const sessions = await openf1Client.getSessions({
         meeting_key: meetingKey,
-        session_type: "Race",
+        session_type: sessionType,
       });
       return sessions.at(0) ?? null;
     },
     enabled: Boolean(meetingKey),
-    staleTime: 5 * 60_000,
+    staleTime: 10 * 60_000,
   });
 }
 
@@ -97,7 +101,7 @@ export function useMeetingDrivers(sessionKey?: number) {
       return openf1Client.getDrivers(sessionKey);
     },
     enabled: Boolean(sessionKey),
-    staleTime: 10 * 60_000,
+    staleTime: 30 * 60_000,
   });
 }
 
@@ -123,6 +127,72 @@ export function useSessionStints(sessionKey?: number) {
       return openf1Client.getStints(sessionKey);
     },
     enabled: Boolean(sessionKey),
-    staleTime: 10 * 60_000,
+    staleTime: 30 * 60_000,
+  });
+}
+
+/**
+ * Fetch ALL laps for a session (for use by delta, deg, sector charts).
+ * Uses longer staleTime since archive data doesn't change.
+ */
+export function useSessionLaps(sessionKey?: number, driverNumbers?: number[]) {
+  const driverKey = driverNumbers?.sort().join("-") ?? "all";
+  return useQuery<LapData[]>({
+    queryKey: ["openf1", "session-laps", sessionKey, driverKey],
+    queryFn: async () => {
+      if (!sessionKey) return [];
+      return openf1Client.getLaps(sessionKey, driverNumbers, 200);
+    },
+    enabled: Boolean(sessionKey),
+    staleTime: 30 * 60_000,
+  });
+}
+
+/** All laps for a session, unfiltered by driver — used by results / pace / position views. */
+export function useSessionLapsAll(sessionKey?: number) {
+  return useQuery<LapData[]>({
+    queryKey: ["openf1", "session-laps-all", sessionKey],
+    queryFn: () => {
+      if (!sessionKey) return Promise.resolve([]);
+      return openf1Client.getLaps(sessionKey, undefined, 200);
+    },
+    enabled: Boolean(sessionKey),
+    staleTime: 30 * 60_000,
+  });
+}
+
+export function useSessionResults(sessionKey?: number) {
+  return useQuery<SessionResultData[]>({
+    queryKey: ["openf1", "session-results", sessionKey],
+    queryFn: () => {
+      if (!sessionKey) return Promise.resolve([]);
+      return openf1Client.getSessionResults(sessionKey);
+    },
+    enabled: Boolean(sessionKey),
+    staleTime: 30 * 60_000,
+  });
+}
+
+export function useSessionPositions(sessionKey?: number) {
+  return useQuery<PositionData[]>({
+    queryKey: ["openf1", "session-positions", sessionKey],
+    queryFn: () => {
+      if (!sessionKey) return Promise.resolve([]);
+      return openf1Client.getPositions(sessionKey);
+    },
+    enabled: Boolean(sessionKey),
+    staleTime: 30 * 60_000,
+  });
+}
+
+export function useSessionWeather(sessionKey?: number) {
+  return useQuery<WeatherData[]>({
+    queryKey: ["openf1", "session-weather", sessionKey],
+    queryFn: () => {
+      if (!sessionKey) return Promise.resolve([]);
+      return openf1Client.getWeather(sessionKey);
+    },
+    enabled: Boolean(sessionKey),
+    staleTime: 30 * 60_000,
   });
 }

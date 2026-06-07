@@ -30,7 +30,7 @@ describe("DriverSelector", () => {
   it("allows selecting up to two drivers and replaces oldest selection", () => {
     const handleChange = jest.fn();
 
-    render(
+    const { rerender } = render(
       <DriverSelector
         drivers={drivers}
         selected={[1]}
@@ -41,7 +41,7 @@ describe("DriverSelector", () => {
     fireEvent.click(screen.getByText(/LEC/));
     expect(handleChange).toHaveBeenLastCalledWith([1, 16]);
 
-    render(
+    rerender(
       <DriverSelector
         drivers={drivers}
         selected={[1, 16]}

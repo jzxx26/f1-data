@@ -1,69 +1,54 @@
-const OPENF1_BASE_URL = "https://api.openf1.org/v1";
+// Single data source: self-hosted FastF1 backend.
+// Set NEXT_PUBLIC_FASTF1_BASE_URL to its base URL (e.g. http://localhost:8000).
+const FASTF1_BACKEND_URL = process.env.NEXT_PUBLIC_FASTF1_BASE_URL ?? "";
 
-const FASTF1_FALLBACK_URL = process.env.NEXT_PUBLIC_FASTF1_BASE_URL ?? "";
+if (!FASTF1_BACKEND_URL && typeof window !== "undefined") {
+  console.error(
+    "❌ NEXT_PUBLIC_FASTF1_BASE_URL is not set — the FastF1 backend is required."
+  );
+}
 
 export type Primitive = string | number | boolean | undefined | null;
 export type QueryParams = Record<string, Primitive | Primitive[]>;
 
-// Helper to add delay between requests
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function fetchWithFallback<T>(
+async function fetchJson<T>(
   path: string,
   params?: QueryParams,
   retryCount = 0
 ): Promise<T> {
-  const url = buildUrl(OPENF1_BASE_URL, path, params);
-
-  try {
-    const response = await fetch(url, {
-      headers: {
-        Accept: "application/json",
-      },
-      next: { revalidate: 0 },
-    });
-
-    if (response.ok) {
-      return response.json();
-    }
-
-    // If rate limited, wait and retry
-    if (response.status === 429 && retryCount < 3) {
-      const waitTime = Math.pow(2, retryCount) * 1000; // Exponential backoff
-      console.log(
-        `⏳ Rate limited, waiting ${waitTime}ms before retry ${
-          retryCount + 1
-        }/3`
-      );
-      await delay(waitTime);
-      return fetchWithFallback<T>(path, params, retryCount + 1);
-    }
-
-    // Only try fallback if it's configured
-    if (FASTF1_FALLBACK_URL) {
-      console.log("🔄 Trying fallback proxy...");
-      const fallbackUrl = buildUrl(FASTF1_FALLBACK_URL, path, params);
-      const fallbackResponse = await fetch(fallbackUrl, {
-        headers: {
-          Accept: "application/json",
-        },
-        next: { revalidate: 0 },
-      });
-
-      if (!fallbackResponse.ok) {
-        throw new Error(
-          `OpenF1 request failed: ${response.status} / fallback ${fallbackResponse.status}`
-        );
-      }
-
-      return fallbackResponse.json();
-    }
-
-    throw new Error(`OpenF1 request failed: ${response.status}`);
-  } catch (error) {
-    console.error("❌ Fetch error:", error);
-    throw error;
+  if (!FASTF1_BACKEND_URL) {
+    throw new Error(
+      "FastF1 backend URL is not configured. Set NEXT_PUBLIC_FASTF1_BASE_URL."
+    );
   }
+  const url = buildUrl(FASTF1_BACKEND_URL, path, params);
+
+  const response = await fetch(url, {
+    headers: { Accept: "application/json" },
+    next: { revalidate: 0 },
+  });
+
+  if (response.ok) {
+    return response.json();
+  }
+
+  // Treat 404 as empty so the UI renders rather than erroring.
+  if (response.status === 404) {
+    return [] as unknown as T;
+  }
+
+  // Backoff on 429/5xx — the FastF1 backend cold-starts on Render free tier.
+  if (
+    (response.status === 429 || response.status >= 500) &&
+    retryCount < 3
+  ) {
+    await delay(Math.pow(2, retryCount) * 1000);
+    return fetchJson<T>(path, params, retryCount + 1);
+  }
+
+  throw new Error(`FastF1 backend request failed: ${response.status}`);
 }
 
 function buildUrl(base: string, path: string, params?: QueryParams) {
@@ -81,7 +66,15 @@ function buildUrl(base: string, path: string, params?: QueryParams) {
       }
       searchParams.set(key, String(value));
     });
-    url.search = searchParams.toString();
+    
+    let queryString = searchParams.toString();
+    queryString = queryString
+      .replace(/%3E%3D=/g, ">=")
+      .replace(/%3C%3D=/g, "<=")
+      .replace(/%3E=/g, ">")
+      .replace(/%3C=/g, "<");
+      
+    url.search = queryString;
   }
   return url.toString();
 }
@@ -166,28 +159,93 @@ export interface RaceMeeting {
   circuit_short_name?: string;
 }
 
+export interface CarData {
+  date: string;
+  session_key: number;
+  meeting_key: number;
+  driver_number: number;
+  speed: number;
+  throttle: number;
+  brake: number;
+  n_gear: number;
+  rpm: number;
+  drs?: number | null;
+}
+
+export interface PositionData {
+  driver_number: number;
+  position: number | null;
+  lap_number: number;
+  session_key: number;
+  date: string;
+}
+
+export interface WeatherData {
+  time_seconds?: number;
+  air_temp?: number;
+  track_temp?: number;
+  humidity?: number;
+  pressure?: number;
+  wind_speed?: number;
+  wind_direction?: number;
+  rainfall?: boolean;
+}
+
 export const openf1Client = {
-  async getLatestRaceSession(): Promise<Session | null> {
-    const sessions = await fetchWithFallback<Session[]>("sessions", {
-      session_key: "latest",
-      session_type: "Race",
-    });
-    return sessions.at(0) ?? null;
+  async getLatestRaceSession(sessionType?: string): Promise<Session | null> {
+    const currentYear = new Date().getFullYear();
+    let sessions: Session[] = [];
+    // Walk back up to 3 years so the dashboard never goes blank between seasons.
+    for (let offset = 0; offset <= 3; offset += 1) {
+      sessions = await fetchJson<Session[]>("sessions", {
+        year: currentYear - offset,
+      });
+      if (sessions.length > 0) break;
+    }
+
+    if (sessions.length === 0) {
+      return null;
+    }
+
+    const filtered = sessionType
+      ? sessions.filter((s) => s.session_type === sessionType)
+      : sessions;
+
+    if (filtered.length === 0) {
+      return sessions.at(-1) ?? null;
+    }
+
+    return (
+      filtered
+        .sort((a, b) => new Date(b.date_start).getTime() - new Date(a.date_start).getTime())
+        .at(0) ?? null
+    );
   },
 
   async getMostRecentCompletedRaceSession(
-    excludeMeetingKey?: number
+    excludeMeetingKey?: number,
+    sessionType?: string
   ): Promise<Session | null> {
-    const sessions = await fetchWithFallback<Session[]>("sessions", {
-      session_type: "Race",
-      order: "date_end.desc",
-      limit: 20,
-    });
+    const currentYear = new Date().getFullYear();
+    let sessions: Session[] = [];
+    for (let offset = 0; offset <= 3; offset += 1) {
+      sessions = await fetchJson<Session[]>("sessions", {
+        year: currentYear - offset,
+      });
+      if (sessions.length > 0) break;
+    }
 
     const now = Date.now();
 
     const completed = sessions
       .filter((session) => {
+        if (sessionType) {
+          if (session.session_type !== sessionType) return false;
+        } else {
+          if (session.session_type !== "Race" && session.session_type !== "Qualifying") {
+            return false;
+          }
+        }
         if (excludeMeetingKey && session.meeting_key === excludeMeetingKey) {
           return false;
         }
@@ -208,30 +266,33 @@ export const openf1Client = {
     return (
       sessions
         .filter((session) => session.meeting_key !== excludeMeetingKey)
+        .sort((a, b) => {
+          const aTime = new Date(a.date_start).getTime();
+          const bTime = new Date(b.date_start).getTime();
+          return bTime - aTime;
+        })
         .at(0) ?? null
     );
   },
 
   async getSessions(params: QueryParams): Promise<Session[]> {
-    return fetchWithFallback<Session[]>("sessions", params);
+    return fetchJson<Session[]>("sessions", params);
   },
 
   async getDrivers(sessionKey: number): Promise<Driver[]> {
-    return fetchWithFallback<Driver[]>("drivers", { session_key: sessionKey });
+    return fetchJson<Driver[]>("drivers", { session_key: sessionKey });
   },
 
   async getLaps(
     sessionKey: number,
     driverNumbers?: number[],
-    limit = 60
+    limit = 200
   ): Promise<LapData[]> {
     try {
-      // Fetch ALL laps for the session (no lap_number filter as API doesn't support <=)
-      const allLaps = await fetchWithFallback<LapData[]>("laps", {
+      const allLaps = await fetchJson<LapData[]>("laps", {
         session_key: sessionKey,
       });
 
-      // Filter by driver numbers if specified
       let filtered = allLaps;
 
       if (driverNumbers && driverNumbers.length > 0) {
@@ -240,7 +301,6 @@ export const openf1Client = {
         );
       }
 
-      // Apply lap number limit client-side
       filtered = filtered.filter((lap) => lap.lap_number <= limit);
 
       return filtered;
@@ -251,23 +311,23 @@ export const openf1Client = {
   },
 
   async getIntervals(sessionKey: number): Promise<IntervalData[]> {
-    return fetchWithFallback<IntervalData[]>("intervals", {
+    return fetchJson<IntervalData[]>("intervals", {
       session_key: sessionKey,
     });
   },
 
   async getStints(sessionKey: number): Promise<StintData[]> {
-    return fetchWithFallback<StintData[]>("stints", {
+    return fetchJson<StintData[]>("stints", {
       session_key: sessionKey,
     });
   },
 
   async getRaceMeetings(params: QueryParams): Promise<RaceMeeting[]> {
-    return fetchWithFallback<RaceMeeting[]>("meetings", params);
+    return fetchJson<RaceMeeting[]>("meetings", params);
   },
 
   async getSessionResults(sessionKey: number): Promise<SessionResultData[]> {
-    return fetchWithFallback<SessionResultData[]>("session_result", {
+    return fetchJson<SessionResultData[]>("session_result", {
       session_key: sessionKey,
     });
   },
@@ -275,8 +335,30 @@ export const openf1Client = {
   async getDriverSessionResults(
     driverNumber: number
   ): Promise<SessionResultData[]> {
-    return fetchWithFallback<SessionResultData[]>("session_result", {
+    return fetchJson<SessionResultData[]>("session_result", {
       driver_number: driverNumber,
     });
+  },
+
+  async getCarData(
+    sessionKey: number,
+    driverNumber: number,
+    dateStart: string,
+    dateEnd: string
+  ): Promise<CarData[]> {
+    return fetchJson<CarData[]>("car_data", {
+      session_key: sessionKey,
+      driver_number: driverNumber,
+      "date>=": dateStart,
+      "date<=": dateEnd,
+    });
+  },
+
+  async getPositions(sessionKey: number): Promise<PositionData[]> {
+    return fetchJson<PositionData[]>("position", { session_key: sessionKey });
+  },
+
+  async getWeather(sessionKey: number): Promise<WeatherData[]> {
+    return fetchJson<WeatherData[]>("weather", { session_key: sessionKey });
   },
 };

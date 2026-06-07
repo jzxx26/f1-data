@@ -1,12 +1,17 @@
 "use client";
 
-import { LiveTelemetryChart } from "@/components/live/LiveTelemetryChart";
+import { TelemetryChart } from "./TelemetryChart";
 import {
   useMeetingDrivers,
   useMeetingRaceSession,
   useRaceMeetings,
   useRaceTelemetry,
+  useSessionLaps,
+  useSessionLapsAll,
+  useSessionPositions,
+  useSessionResults,
   useSessionStints,
+  useSessionWeather,
   type RaceFilters,
 } from "@/hooks/useRaceArchive";
 import { getDriverColor, getTyreColor } from "@/lib/colors";
@@ -14,12 +19,24 @@ import type { Driver, StintData } from "@/lib/openf1";
 import { cn } from "@/lib/utils";
 import { useEffect, useMemo, useState } from "react";
 
+import { FastestLapsCard } from "./FastestLapsCard";
+import { PositionChart } from "./PositionChart";
+import { RacePaceChart } from "./RacePaceChart";
+import { RaceResultsTable } from "./RaceResultsTable";
+import { SectorGapChart } from "./SectorGapChart";
+import { TimeDeltaChart } from "./TimeDeltaChart";
+import { TopSpeedsCard } from "./TopSpeedsCard";
+import { TrackConditionsCard } from "./TrackConditionsCard";
+import { TyreDegChart } from "./TyreDegChart";
+
 const CURRENT_YEAR = new Date().getFullYear();
+const ARCHIVE_START_YEAR = 2018;
 
 export function RaceArchive() {
   const [filters, setFilters] = useState<RaceFilters>({ year: CURRENT_YEAR });
   const meetingsQuery = useRaceMeetings(filters);
   const [selectedMeeting, setSelectedMeeting] = useState<number | null>(null);
+  const [sessionType, setSessionType] = useState<"Race" | "Qualifying">("Race");
 
   useEffect(() => {
     if (!meetingsQuery.data || meetingsQuery.data.length === 0) {
@@ -34,7 +51,7 @@ export function RaceArchive() {
     }
   }, [meetingsQuery.data, selectedMeeting]);
 
-  const sessionQuery = useMeetingRaceSession(selectedMeeting ?? undefined);
+  const sessionQuery = useMeetingRaceSession(selectedMeeting ?? undefined, sessionType);
   const driversQuery = useMeetingDrivers(sessionQuery.data?.session_key);
 
   const [selectedDrivers, setSelectedDrivers] = useState<number[]>([]);
@@ -64,20 +81,59 @@ export function RaceArchive() {
   );
   const stintsQuery = useSessionStints(sessionQuery.data?.session_key);
 
+  // Laps scoped to the selected drivers (for delta/sector/tyre comparison views)
+  const lapsQuery = useSessionLaps(
+    sessionQuery.data?.session_key,
+    selectedDrivers.length > 0 ? selectedDrivers : undefined
+  );
+  // All laps (for fastest lap, top speed, pace distribution — independent of selection)
+  const allLapsQuery = useSessionLapsAll(sessionQuery.data?.session_key);
+  const resultsQuery = useSessionResults(sessionQuery.data?.session_key);
+  const positionsQuery = useSessionPositions(sessionQuery.data?.session_key);
+  const weatherQuery = useSessionWeather(sessionQuery.data?.session_key);
+
   const meetingOptions = meetingsQuery.data ?? [];
   return (
     <div className="flex w-full flex-col gap-6 lg:gap-8">
       <header className="rounded-3xl border border-white/5 bg-gradient-to-br from-white/[0.07] to-white/[0.02] p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.04)]">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-2xl space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.4em] text-white/50">
-              Race Archive
-            </p>
+            <div className="flex items-center gap-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.4em] text-white/50">
+                Race Archive
+              </p>
+              
+              <div className="flex rounded-xl bg-black/40 p-0.5 border border-white/10">
+                <button
+                  onClick={() => setSessionType("Race")}
+                  className={cn(
+                    "rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition",
+                    sessionType === "Race"
+                      ? "bg-white/10 text-white shadow-[0_1px_2px_rgba(0,0,0,0.4)]"
+                      : "text-white/40 hover:text-white"
+                  )}
+                >
+                  Race
+                </button>
+                <button
+                  onClick={() => setSessionType("Qualifying")}
+                  className={cn(
+                    "rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition",
+                    sessionType === "Qualifying"
+                      ? "bg-white/10 text-white shadow-[0_1px_2px_rgba(0,0,0,0.4)]"
+                      : "text-white/40 hover:text-white"
+                  )}
+                >
+                  Qualifying
+                </button>
+              </div>
+            </div>
+            
             <h1 className="text-2xl font-semibold text-white sm:text-3xl">
               Replay historical battles
             </h1>
             <p className="text-sm text-white/60">
-              Filter races by season, meeting, or driver and compare telemetry
+              Filter sessions by season, meeting, or driver and compare telemetry
               traces side-by-side. Pit strategy information is summarised below
               to help dissect the story of the race.
             </p>
@@ -92,25 +148,75 @@ export function RaceArchive() {
         </div>
       </header>
 
+      {/* Race results table — all drivers */}
+      {sessionType === "Race" && (
+        <RaceResultsTable
+          results={resultsQuery.data ?? []}
+          drivers={driversQuery.data ?? []}
+          isLoading={resultsQuery.isLoading}
+        />
+      )}
+
+      {/* Track conditions overview */}
+      <TrackConditionsCard
+        weather={weatherQuery.data ?? []}
+        isLoading={weatherQuery.isLoading}
+      />
+
+      {/* Race story: position changes per lap */}
+      {sessionType === "Race" && (
+        <PositionChart
+          positions={positionsQuery.data ?? []}
+          drivers={driversQuery.data ?? []}
+          highlight={selectedDrivers.length > 0 ? selectedDrivers : undefined}
+          isLoading={positionsQuery.isLoading}
+        />
+      )}
+
+      {/* Pace distribution (clean laps) */}
+      {sessionType === "Race" && (
+        <RacePaceChart
+          laps={allLapsQuery.data ?? []}
+          drivers={driversQuery.data ?? []}
+          isLoading={allLapsQuery.isLoading}
+        />
+      )}
+
+      {/* Fastest laps + top speeds (all drivers, independent of selection) */}
+      <section className="grid gap-6 lg:grid-cols-2 lg:gap-8">
+        <FastestLapsCard
+          laps={allLapsQuery.data ?? []}
+          drivers={driversQuery.data ?? []}
+          isLoading={allLapsQuery.isLoading}
+        />
+        <TopSpeedsCard
+          laps={allLapsQuery.data ?? []}
+          drivers={driversQuery.data ?? []}
+          isLoading={allLapsQuery.isLoading}
+        />
+      </section>
+
+      {/* Driver selector for the comparison views below */}
+      <DriverSelector
+        drivers={driversQuery.data ?? []}
+        selected={selectedDrivers}
+        onChange={setSelectedDrivers}
+        disabled={driversQuery.isLoading}
+      />
+
+      {/* Row 1: Telemetry + Pit Strategy */}
       <section className="grid gap-6 lg:grid-cols-[2fr,1fr] lg:gap-8">
-        <div className="flex flex-col gap-4">
-          <DriverSelector
-            drivers={driversQuery.data ?? []}
-            selected={selectedDrivers}
-            onChange={setSelectedDrivers}
-            disabled={driversQuery.isLoading}
-          />
-          <LiveTelemetryChart
-            data={telemetryQuery.chartData}
-            drivers={chosenDrivers}
-            detailMap={telemetryQuery.detailMap}
-            isLoading={telemetryQuery.isFetching}
-            title="Telemetry Comparison"
-            subtitle={sessionSubtitle(sessionQuery.data)}
-            statusLabel={telemetryStatusLabel(telemetryQuery.isFetching)}
-            footnote={sessionFootnote(sessionQuery.data)}
-          />
-        </div>
+        <TelemetryChart
+          sessionKey={sessionQuery.data?.session_key}
+          data={telemetryQuery.chartData}
+          drivers={chosenDrivers}
+          detailMap={telemetryQuery.detailMap}
+          isLoading={telemetryQuery.isFetching}
+          title="Telemetry Comparison"
+          subtitle={sessionSubtitle(sessionQuery.data)}
+          statusLabel={telemetryStatusLabel(telemetryQuery.isFetching)}
+          footnote={sessionFootnote(sessionQuery.data)}
+        />
         <PitStrategyPanel
           stints={stintsQuery.data ?? []}
           drivers={driversQuery.data ?? []}
@@ -118,6 +224,32 @@ export function RaceArchive() {
           isLoading={stintsQuery.isLoading}
         />
       </section>
+
+      {/* Row 2: Time Delta + Sector Gap (theoretical ultimate) */}
+      <section className="grid gap-6 lg:grid-cols-2 lg:gap-8">
+        <TimeDeltaChart
+          laps={lapsQuery.data ?? []}
+          drivers={chosenDrivers}
+          isLoading={lapsQuery.isLoading}
+        />
+        <SectorGapChart
+          laps={lapsQuery.data ?? []}
+          drivers={chosenDrivers}
+          isLoading={lapsQuery.isLoading}
+        />
+      </section>
+
+      {/* Row 3: Tyre Degradation (full width) */}
+      {sessionType === "Race" && (
+        <section>
+          <TyreDegChart
+            laps={lapsQuery.data ?? []}
+            stints={stintsQuery.data ?? []}
+            drivers={chosenDrivers}
+            isLoading={lapsQuery.isLoading || stintsQuery.isLoading}
+          />
+        </section>
+      )}
     </div>
   );
 }
@@ -143,9 +275,8 @@ function SearchPanel({
   selectedMeeting,
 }: SearchPanelProps) {
   const years = useMemo(() => {
-    const startYear = 2018;
     return Array.from(
-      { length: CURRENT_YEAR - startYear + 1 },
+      { length: CURRENT_YEAR - ARCHIVE_START_YEAR + 1 },
       (_, index) => CURRENT_YEAR - index
     );
   }, []);
@@ -429,7 +560,7 @@ function sessionFootnote(
     session_key?: number;
   } | null
 ) {
-  if (!session) return "Historical data from OpenF1";
+  if (!session) return "Historical data from FastF1";
   return `${session.country_name ?? ""} • Session key ${
     session.session_key ?? "--"
   }`;

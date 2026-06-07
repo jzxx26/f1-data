@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: f1-telemetry-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: FASTF1_CACHE
+        value: /tmp/fastf1_cache
+      - key: CORS_ORIGINS
+        value: https://your-vercel-app.vercel.app,http://localhost:3001,http://localhost:3000
+    rootDir: backend
+    plan: free

@@ -1,17 +1,8 @@
 "use client";
 
-import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ReactNode } from "react";
-
-const NAV_ITEMS = [
-  { href: "/live", label: "🏁 Live" },
-  { href: "/stats", label: "📊 Stats" },
-  { href: "/archive", label: "📅 Archive" },
-  { href: "/settings", label: "⚙️ Settings", disabled: true },
-];
 
 interface AppShellProps {
   children: ReactNode;
@@ -29,53 +20,12 @@ export function AppShell({ children }: AppShellProps) {
               F1
             </span>
             <span className="hidden text-xs text-white/60 sm:inline">
-              Telemetry Insight Hub
+              Race Insights · FastF1
             </span>
           </div>
-          <ul className="flex items-center gap-1 rounded-full bg-white/5 p-1 text-sm text-white/70">
-            {NAV_ITEMS.map(({ href, label, disabled }) => {
-              const isActive =
-                pathname === href ||
-                pathname?.startsWith(`${href}/`) ||
-                (href === "/live" &&
-                  (pathname === "/" || pathname?.startsWith("/live")));
-              return (
-                <li key={href}>
-                  {disabled ? (
-                    <span
-                      aria-disabled="true"
-                      className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium text-white/30"
-                    >
-                      {label}
-                    </span>
-                  ) : (
-                    <Link
-                      href={href}
-                      className={cn(
-                        "relative inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none",
-                        isActive
-                          ? "text-white"
-                          : "text-white/60 hover:text-white focus-visible:ring-2 focus-visible:ring-amber-400"
-                      )}
-                    >
-                      {isActive ? (
-                        <motion.span
-                          layoutId="nav-pill"
-                          className="absolute inset-0 rounded-full bg-white/10"
-                          transition={{
-                            type: "spring",
-                            stiffness: 250,
-                            damping: 24,
-                          }}
-                        />
-                      ) : null}
-                      <span className="relative z-10">{label}</span>
-                    </Link>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+          <span className="rounded-full bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.3em] text-white/50">
+            Post-race analytics
+          </span>
         </nav>
       </header>
       <main className="relative flex-1">
@@ -94,7 +44,7 @@ export function AppShell({ children }: AppShellProps) {
         </AnimatePresence>
       </main>
       <footer className="border-t border-white/5 bg-black/60 py-6 text-center text-xs text-white/40">
-        Data courtesy of OpenF1 • Built for race strategists & fans alike
+        Data courtesy of FastF1 · Built for race fans & strategists
       </footer>
     </div>
   );

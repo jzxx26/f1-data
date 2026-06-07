@@ -28,7 +28,7 @@ async function fetchTelemetry(
 ): Promise<TelemetryResponse> {
   const driverNumbers = drivers.map((driver) => driver.driver_number);
   const [laps, stints] = await Promise.all([
-    openf1Client.getLaps(sessionKey, driverNumbers, 80),
+    openf1Client.getLaps(sessionKey, driverNumbers, 200),
     openf1Client.getStints(sessionKey),
   ]);
 
@@ -166,5 +166,91 @@ export function useLiveTelemetry(
     ...query,
     chartData: chartData.data,
     detailMap: chartData.detailMap,
+  };
+}
+
+export function useDetailedTelemetry(
+  sessionKey?: number,
+  driverNumber1?: number,
+  driverNumber2?: number,
+  lapNumber?: number,
+  enabled = true
+) {
+  const driversToFetch = useMemo(() => {
+    const list: number[] = [];
+    if (driverNumber1 !== undefined && !Number.isNaN(driverNumber1)) list.push(driverNumber1);
+    if (driverNumber2 !== undefined && !Number.isNaN(driverNumber2)) list.push(driverNumber2);
+    return list;
+  }, [driverNumber1, driverNumber2]);
+
+  // Fetch all laps for the session to find start/end times of the lap
+  const lapsQuery = useQuery({
+    queryKey: ["openf1", "detailed-laps", sessionKey, driversToFetch.join("-")],
+    queryFn: () => {
+      if (!sessionKey || driversToFetch.length === 0) return Promise.resolve([]);
+      return openf1Client.getLaps(sessionKey, driversToFetch, 200);
+    },
+    enabled: Boolean(enabled && sessionKey && driversToFetch.length > 0),
+    staleTime: 60_000,
+  });
+
+  // Fetch car data for the requested lap of the driver
+  const carDataQuery = useQuery({
+    queryKey: [
+      "openf1",
+      "detailed-car-data",
+      sessionKey,
+      driverNumber1,
+      driverNumber2,
+      lapNumber,
+      lapsQuery.data?.length,
+    ],
+    queryFn: async () => {
+      if (!sessionKey || !lapNumber || !lapsQuery.data) return [];
+
+      const promises = driversToFetch.map(async (driverNum) => {
+        const driverLaps = lapsQuery.data.filter((l) => l.driver_number === driverNum);
+        const lap = driverLaps.find((l) => l.lap_number === lapNumber);
+        
+        if (!lap || !lap.date_start || !lap.lap_duration) {
+          return { driverNum, data: [] };
+        }
+
+        const dateStart = lap.date_start;
+        const startMs = new Date(dateStart).getTime();
+        const dateEnd = new Date(startMs + lap.lap_duration * 1000).toISOString();
+
+        try {
+          const data = await openf1Client.getCarData(
+            sessionKey,
+            driverNum,
+            dateStart,
+            dateEnd
+          );
+          return { driverNum, data };
+        } catch (err) {
+          console.error(`Error fetching car data for driver ${driverNum}:`, err);
+          return { driverNum, data: [] };
+        }
+      });
+
+      return Promise.all(promises);
+    },
+    enabled: Boolean(
+      enabled &&
+      sessionKey &&
+      lapNumber &&
+      lapsQuery.data &&
+      lapsQuery.data.length > 0 &&
+      driversToFetch.length > 0
+    ),
+    staleTime: 5 * 60_000,
+  });
+
+  return {
+    laps: lapsQuery.data ?? [],
+    carData: carDataQuery.data ?? [],
+    isLoading: lapsQuery.isLoading || carDataQuery.isLoading,
+    isFetching: lapsQuery.isFetching || carDataQuery.isFetching,
   };
 }

@@ -11,7 +11,9 @@ const config: Config = {
     "^.+\\.(ts|tsx)$": [
       "ts-jest",
       {
-        tsconfig: "tsconfig.json",
+        tsconfig: {
+          jsx: "react-jsx",
+        },
       },
     ],
   },

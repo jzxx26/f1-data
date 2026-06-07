@@ -11,10 +11,6 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "media.formula1.com",
       },
-      {
-        protocol: "https",
-        hostname: "fastf1-openf1-proxy.fly.dev",
-      },
     ],
   },
 };
