@@ -18,10 +18,6 @@ from fastapi.responses import JSONResponse
 
 # ── Config ──────────────────────────────────────────────────────────────────
 CACHE_DIR = os.environ.get("FASTF1_CACHE", "./cache")
-ALLOWED_ORIGINS = os.environ.get(
-    "CORS_ORIGINS", "http://localhost:3000,http://localhost:3001"
-).split(",")
-
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("f1api")
 
@@ -34,7 +30,7 @@ app = FastAPI(title="F1 Telemetry API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
