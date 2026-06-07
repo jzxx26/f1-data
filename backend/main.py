@@ -331,17 +331,22 @@ def get_laps(
             s2 = lap.get("Sector2Time")
             s3 = lap.get("Sector3Time")
 
+            # Convert sector times safely
+            duration_s1 = s1.total_seconds() if isinstance(s1, pd.Timedelta) else _clean(s1)
+            duration_s2 = s2.total_seconds() if isinstance(s2, pd.Timedelta) else _clean(s2)
+            duration_s3 = s3.total_seconds() if isinstance(s3, pd.Timedelta) else _clean(s3)
+
             result.append({
                 "driver_number": int(lap.get("DriverNumber", 0)),
                 "lap_number": int(lap.get("LapNumber", 0)),
-                "lap_duration": _clean(lap_duration) if not isinstance(lap_duration, pd.Timedelta) else lap_duration.total_seconds(),
+                "lap_duration": lap_duration,
                 "is_pit_out_lap": bool(lap.get("PitOutTime") is not None and not pd.isna(lap.get("PitOutTime"))),
                 "st_speed": _clean(lap.get("SpeedST")),
                 "i1_speed": _clean(lap.get("SpeedI1")),
                 "i2_speed": _clean(lap.get("SpeedI2")),
-                "duration_sector_1": s1.total_seconds() if isinstance(s1, pd.Timedelta) else _clean(s1),
-                "duration_sector_2": s2.total_seconds() if isinstance(s2, pd.Timedelta) else _clean(s2),
-                "duration_sector_3": s3.total_seconds() if isinstance(s3, pd.Timedelta) else _clean(s3),
+                "duration_sector_1": duration_s1,
+                "duration_sector_2": duration_s2,
+                "duration_sector_3": duration_s3,
                 "date_start": str(lap.get("LapStartDate", "")) if not pd.isna(lap.get("LapStartDate", pd.NaT)) else None,
             })
 

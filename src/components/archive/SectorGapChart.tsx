@@ -3,7 +3,7 @@
 import { ChartContainer } from "@/components/common/ChartContainer";
 import { getDriverColor } from "@/lib/colors";
 import type { Driver, LapData } from "@/lib/openf1";
-import { formatTime, formatSeconds } from "@/lib/utils";
+import { formatTime, formatSeconds, isFiniteNumber } from "@/lib/utils";
 import { useMemo } from "react";
 import {
   Bar,
@@ -64,22 +64,25 @@ export function SectorGapChart({ laps, drivers, isLoading }: SectorGapChartProps
       }
       const pd = perDriver.get(lap.driver_number)!;
 
-      if (dur && dur > 0 && dur < 200) pd.bestLap = Math.min(pd.bestLap, dur);
-      if (s1 && s1 > 0 && s1 < 60) { pd.bestS1 = Math.min(pd.bestS1, s1); sessionBestS1 = Math.min(sessionBestS1, s1); }
-      if (s2 && s2 > 0 && s2 < 60) { pd.bestS2 = Math.min(pd.bestS2, s2); sessionBestS2 = Math.min(sessionBestS2, s2); }
-      if (s3 && s3 > 0 && s3 < 60) { pd.bestS3 = Math.min(pd.bestS3, s3); sessionBestS3 = Math.min(sessionBestS3, s3); }
+      if (isFiniteNumber(dur) && dur > 0 && dur < 200) pd.bestLap = Math.min(pd.bestLap, dur);
+      if (isFiniteNumber(s1) && s1 > 0 && s1 < 60) { pd.bestS1 = Math.min(pd.bestS1, s1); sessionBestS1 = Math.min(sessionBestS1, s1); }
+      if (isFiniteNumber(s2) && s2 > 0 && s2 < 60) { pd.bestS2 = Math.min(pd.bestS2, s2); sessionBestS2 = Math.min(sessionBestS2, s2); }
+      if (isFiniteNumber(s3) && s3 > 0 && s3 < 60) { pd.bestS3 = Math.min(pd.bestS3, s3); sessionBestS3 = Math.min(sessionBestS3, s3); }
     });
 
     const sessionBest: BestSectors | null =
-      sessionBestS1 < Infinity ? { s1: sessionBestS1, s2: sessionBestS2, s3: sessionBestS3 } : null;
+      [sessionBestS1, sessionBestS2, sessionBestS3].every(isFiniteNumber)
+        ? { s1: sessionBestS1, s2: sessionBestS2, s3: sessionBestS3 }
+        : null;
 
     const bars: GapRow[] = [];
     drivers.forEach((driver) => {
       const pd = perDriver.get(driver.driver_number);
-      if (!pd || pd.bestS1 === Infinity) return;
+      if (!pd || ![pd.bestS1, pd.bestS2, pd.bestS3].every(isFiniteNumber)) return;
 
       const ultimateLap = pd.bestS1 + pd.bestS2 + pd.bestS3;
       const gap = pd.bestLap !== Infinity ? pd.bestLap - ultimateLap : 0;
+      if (![ultimateLap, gap].every(isFiniteNumber)) return;
 
       bars.push({
         driver: driver.name_acronym,

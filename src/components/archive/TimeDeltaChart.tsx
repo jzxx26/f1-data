@@ -3,7 +3,7 @@
 import { ChartContainer } from "@/components/common/ChartContainer";
 import { getDriverColor } from "@/lib/colors";
 import type { Driver, LapData } from "@/lib/openf1";
-import { formatTime } from "@/lib/utils";
+import { formatTime, isFiniteNumber } from "@/lib/utils";
 import { useMemo } from "react";
 import {
   CartesianGrid,
@@ -43,9 +43,10 @@ export function TimeDeltaChart({ laps, drivers, referenceDriver, isLoading }: Ti
     const refLaps = new Map<number, number>();
     const cmpLaps = new Map<number, number>();
     laps.forEach((lap) => {
-      if (lap.lap_duration && lap.lap_duration > 0 && lap.lap_duration < 200) {
-        if (lap.driver_number === refDriver) refLaps.set(lap.lap_number, lap.lap_duration);
-        else if (lap.driver_number === cmpDriver) cmpLaps.set(lap.lap_number, lap.lap_duration);
+      const lapDuration = lap.lap_duration;
+      if (isFiniteNumber(lapDuration) && lapDuration > 0 && lapDuration < 200) {
+        if (lap.driver_number === refDriver) refLaps.set(lap.lap_number, lapDuration);
+        else if (lap.driver_number === cmpDriver) cmpLaps.set(lap.lap_number, lapDuration);
       }
     });
     const allNums = new Set([...refLaps.keys(), ...cmpLaps.keys()]);
@@ -65,7 +66,11 @@ export function TimeDeltaChart({ laps, drivers, referenceDriver, isLoading }: Ti
   const hasData = chartData.length > 0;
   const maxAbs = useMemo(() => {
     if (!hasData) return 5;
-    return Math.ceil(Math.max(...chartData.map((d) => Math.abs(d.delta ?? 0))) + 1);
+    const values = chartData
+      .map((d) => Math.abs(d.delta ?? 0))
+      .filter(isFiniteNumber);
+    if (values.length === 0) return 5;
+    return Math.max(1, Math.ceil(Math.max(...values) + 1));
   }, [chartData, hasData]);
 
   const renderTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {

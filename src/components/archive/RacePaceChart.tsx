@@ -44,7 +44,11 @@ function median(values: number[]): number {
     : sorted[mid];
 }
 
-export function RacePaceChart({ laps, drivers, isLoading }: RacePaceChartProps) {
+export function RacePaceChart({
+  laps,
+  drivers,
+  isLoading,
+}: RacePaceChartProps) {
   const data = useMemo<PaceRow[]>(() => {
     // group lap times per driver, drop pit laps + outliers > median * 1.07 (typical safety-car/in-out laps)
     const byDriver = new Map<number, number[]>();
@@ -99,6 +103,14 @@ export function RacePaceChart({ laps, drivers, isLoading }: RacePaceChartProps) 
     return rows.sort((a, b) => a.median - b.median);
   }, [laps, drivers]);
 
+  const yAxisDomain = useMemo<[number, number]>(() => {
+    if (data.length === 0) return [0, 1];
+    const allValues = data.flatMap((row) => [row.best, row.worst, row.median]);
+    const min = Math.min(...allValues);
+    const max = Math.max(...allValues);
+    return [min - 0.5, max + 0.5];
+  }, [data]);
+
   const renderTooltip = ({ active, payload }: TooltipProps<number, string>) => {
     if (!active || !payload || payload.length === 0) return null;
     const row = payload[0]?.payload as PaceRow | undefined;
@@ -116,15 +128,25 @@ export function RacePaceChart({ laps, drivers, isLoading }: RacePaceChartProps) 
         </div>
         <div className="grid grid-cols-2 gap-1.5 text-[11px]">
           <span className="text-white/55">Median</span>
-          <span className="text-right font-mono text-white/85">{formatTime(row.median)}</span>
+          <span className="text-right font-mono text-white/85">
+            {formatTime(row.median)}
+          </span>
           <span className="text-white/55">Mean</span>
-          <span className="text-right font-mono text-white/85">{formatTime(row.mean)}</span>
+          <span className="text-right font-mono text-white/85">
+            {formatTime(row.mean)}
+          </span>
           <span className="text-white/55">Std dev</span>
-          <span className="text-right font-mono text-white/85">±{row.stdev.toFixed(3)}s</span>
+          <span className="text-right font-mono text-white/85">
+            ±{row.stdev.toFixed(3)}s
+          </span>
           <span className="text-white/55">Best clean</span>
-          <span className="text-right font-mono text-white/85">{formatTime(row.best)}</span>
+          <span className="text-right font-mono text-white/85">
+            {formatTime(row.best)}
+          </span>
           <span className="text-white/55">Worst clean</span>
-          <span className="text-right font-mono text-white/85">{formatTime(row.worst)}</span>
+          <span className="text-right font-mono text-white/85">
+            {formatTime(row.worst)}
+          </span>
         </div>
       </div>
     );
@@ -155,7 +177,10 @@ export function RacePaceChart({ laps, drivers, isLoading }: RacePaceChartProps) 
             data={data}
             margin={{ top: 10, right: 20, left: 10, bottom: 10 }}
           >
-            <CartesianGrid stroke="rgba(255,255,255,0.07)" strokeDasharray="3 3" />
+            <CartesianGrid
+              stroke="rgba(255,255,255,0.07)"
+              strokeDasharray="3 3"
+            />
             <XAxis
               dataKey="acronym"
               stroke="#9ca3af"
@@ -174,7 +199,7 @@ export function RacePaceChart({ laps, drivers, isLoading }: RacePaceChartProps) 
               axisLine={{ stroke: "rgba(255,255,255,0.15)" }}
               fontSize={11}
               tick={{ fill: "#9ca3af" }}
-              domain={["dataMin - 0.5", "dataMax + 0.5"]}
+              domain={yAxisDomain}
               tickFormatter={(v) => formatTime(Number(v))}
               label={{
                 value: "Lap time",
@@ -184,7 +209,10 @@ export function RacePaceChart({ laps, drivers, isLoading }: RacePaceChartProps) 
                 fontSize: 11,
               }}
             />
-            <Tooltip content={renderTooltip} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+            <Tooltip
+              content={renderTooltip}
+              cursor={{ fill: "rgba(255,255,255,0.04)" }}
+            />
             <Bar
               dataKey="median"
               barSize={20}
@@ -195,8 +223,18 @@ export function RacePaceChart({ laps, drivers, isLoading }: RacePaceChartProps) 
                 <Cell key={row.acronym} fill={row.color} fillOpacity={0.6} />
               ))}
             </Bar>
-            <Scatter dataKey="best" shape="diamond" fill="#facc15" name="Best clean lap" />
-            <Scatter dataKey="worst" shape="circle" fill="#f87171" name="Worst clean lap" />
+            <Scatter
+              dataKey="best"
+              shape="diamond"
+              fill="#facc15"
+              name="Best clean lap"
+            />
+            <Scatter
+              dataKey="worst"
+              shape="circle"
+              fill="#f87171"
+              name="Worst clean lap"
+            />
           </ComposedChart>
         </ChartContainer>
       )}

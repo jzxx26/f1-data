@@ -4,8 +4,12 @@ export function cn(...inputs: ClassValue[]) {
   return clsx(inputs);
 }
 
+export function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
 export function formatTime(seconds?: number | null) {
-  if (seconds === undefined || seconds === null) {
+  if (!isFiniteNumber(seconds)) {
     return "--";
   }
 
@@ -22,11 +26,12 @@ export function formatTime(seconds?: number | null) {
 export function formatInterval(seconds?: number | string | null) {
   if (seconds === undefined || seconds === null) return "--";
   if (typeof seconds === "string") return seconds;
+  if (!Number.isFinite(seconds)) return "--";
   const sign = seconds > 0 ? "+" : "";
   return `${sign}${seconds.toFixed(3)}s`;
 }
 
 export function formatSeconds(seconds?: number | null) {
-  if (seconds === undefined || seconds === null) return "--";
+  if (!isFiniteNumber(seconds)) return "--";
   return `${seconds.toFixed(3)}s`;
 }
