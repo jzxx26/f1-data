@@ -10,7 +10,7 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <div className="relative flex min-h-screen w-full flex-col bg-[#0a0a0c] text-white/90">
       <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#0a0a0c]/85 backdrop-blur-xl">
-        <nav className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4 sm:h-16 sm:px-6">
+        <nav className="mx-auto flex h-14 w-full items-center justify-between px-4 sm:h-16 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-red-500 to-amber-500 text-[11px] font-black tracking-tight text-black shadow-[0_0_24px_-6px_rgba(239,68,68,0.6)]">
               F1
@@ -30,7 +30,7 @@ export function AppShell({ children }: AppShellProps) {
         </nav>
       </header>
       <main className="relative flex-1">
-        <section className="relative z-10 mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:py-12">
+        <section className="relative z-10 mx-auto w-full px-3 py-6 sm:px-5 sm:py-8 lg:px-8 lg:py-10">
           {children}
         </section>
       </main>
