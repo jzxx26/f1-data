@@ -172,42 +172,37 @@ export function RaceArchive() {
         isLoading={weatherQuery.isLoading}
       />
 
-      {/* Race story: position changes per lap */}
+      {/* Race story + pace distribution side by side on wide screens */}
       {sessionType === "Race" && (
-        <PositionChart
-          positions={positionsQuery.data ?? []}
-          drivers={driversQuery.data ?? []}
-          highlight={selectedDrivers.length > 0 ? selectedDrivers : undefined}
-          isLoading={positionsQuery.isLoading}
-        />
+        <section className="grid gap-5 lg:gap-6 xl:grid-cols-2">
+          <PositionChart
+            positions={positionsQuery.data ?? []}
+            drivers={driversQuery.data ?? []}
+            highlight={selectedDrivers.length > 0 ? selectedDrivers : undefined}
+            isLoading={positionsQuery.isLoading}
+          />
+          <RacePaceChart
+            laps={allLapsQuery.data ?? []}
+            drivers={driversQuery.data ?? []}
+            isLoading={allLapsQuery.isLoading}
+          />
+        </section>
       )}
 
-      {/* Pace distribution (clean laps) */}
-      {sessionType === "Race" && (
-        <RacePaceChart
-          laps={allLapsQuery.data ?? []}
-          drivers={driversQuery.data ?? []}
-          isLoading={allLapsQuery.isLoading}
-        />
-      )}
-
-      {/* Fastest laps + top speeds (all drivers, independent of selection) */}
-      <section className="grid gap-5 lg:grid-cols-2 lg:gap-6">
-        <FastestLapsCard
-          laps={allLapsQuery.data ?? []}
-          drivers={driversQuery.data ?? []}
-          isLoading={allLapsQuery.isLoading}
-        />
-        <TopSpeedsCard
-          laps={allLapsQuery.data ?? []}
-          drivers={driversQuery.data ?? []}
-          isLoading={allLapsQuery.isLoading}
-        />
-      </section>
-
-      {/* Consistency + biggest movers */}
-      {sessionType === "Race" && (
-        <section className="grid gap-5 lg:grid-cols-2 lg:gap-6">
+      {/* Stat cards: fastest laps + top speeds always shown;
+          consistency + movers added for race — all 4 in one row on xl */}
+      {sessionType === "Race" ? (
+        <section className="grid gap-5 lg:grid-cols-2 lg:gap-6 xl:grid-cols-4">
+          <FastestLapsCard
+            laps={allLapsQuery.data ?? []}
+            drivers={driversQuery.data ?? []}
+            isLoading={allLapsQuery.isLoading}
+          />
+          <TopSpeedsCard
+            laps={allLapsQuery.data ?? []}
+            drivers={driversQuery.data ?? []}
+            isLoading={allLapsQuery.isLoading}
+          />
           <ConsistencyCard
             laps={allLapsQuery.data ?? []}
             drivers={driversQuery.data ?? []}
@@ -218,6 +213,19 @@ export function RaceArchive() {
             results={resultsQuery.data ?? []}
             drivers={driversQuery.data ?? []}
             isLoading={positionsQuery.isLoading || resultsQuery.isLoading}
+          />
+        </section>
+      ) : (
+        <section className="grid gap-5 lg:grid-cols-2 lg:gap-6">
+          <FastestLapsCard
+            laps={allLapsQuery.data ?? []}
+            drivers={driversQuery.data ?? []}
+            isLoading={allLapsQuery.isLoading}
+          />
+          <TopSpeedsCard
+            laps={allLapsQuery.data ?? []}
+            drivers={driversQuery.data ?? []}
+            isLoading={allLapsQuery.isLoading}
           />
         </section>
       )}
@@ -284,30 +292,19 @@ export function RaceArchive() {
         )}
       </section>
 
-      {/* Row 2: Sector ultimate lap (+ cumulative delta for races) */}
-      <section
-        className={cn(
-          "grid gap-5 lg:gap-6",
-          sessionType === "Race" ? "lg:grid-cols-2" : "grid-cols-1"
-        )}
-      >
-        {sessionType === "Race" && (
+      {/* Row 2+3: delta, sector gap, tyre deg — 3-col on xl for race */}
+      {sessionType === "Race" ? (
+        <section className="grid gap-5 lg:grid-cols-2 lg:gap-6 xl:grid-cols-3">
           <TimeDeltaChart
             laps={lapsQuery.data ?? []}
             drivers={chosenDrivers}
             isLoading={lapsQuery.isLoading}
           />
-        )}
-        <SectorGapChart
-          laps={lapsQuery.data ?? []}
-          drivers={chosenDrivers}
-          isLoading={lapsQuery.isLoading}
-        />
-      </section>
-
-      {/* Row 3: Tyre Degradation (full width) */}
-      {sessionType === "Race" && (
-        <section>
+          <SectorGapChart
+            laps={lapsQuery.data ?? []}
+            drivers={chosenDrivers}
+            isLoading={lapsQuery.isLoading}
+          />
           <TyreDegChart
             laps={lapsQuery.data ?? []}
             stints={stintsQuery.data ?? []}
@@ -315,6 +312,12 @@ export function RaceArchive() {
             isLoading={lapsQuery.isLoading || stintsQuery.isLoading}
           />
         </section>
+      ) : (
+        <SectorGapChart
+          laps={lapsQuery.data ?? []}
+          drivers={chosenDrivers}
+          isLoading={lapsQuery.isLoading}
+        />
       )}
     </div>
   );
