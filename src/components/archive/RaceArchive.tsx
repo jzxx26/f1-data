@@ -2,6 +2,7 @@
 
 import { TelemetryChart } from "./TelemetryChart";
 import {
+  useFastestLapTelemetry,
   useMeetingDrivers,
   useMeetingRaceSession,
   useRaceMeetings,
@@ -21,16 +22,21 @@ import { useEffect, useMemo, useState } from "react";
 
 import { BiggestMoversCard } from "./BiggestMoversCard";
 import { ConsistencyCard } from "./ConsistencyCard";
+import { DeltaVsDistanceChart } from "./DeltaVsDistanceChart";
 import { FastestLapsCard } from "./FastestLapsCard";
+import { IdealLapCard } from "./IdealLapCard";
+import { MiniSectorComparison } from "./MiniSectorComparison";
 import { PoleLapCard } from "./PoleLapCard";
 import { PositionChart } from "./PositionChart";
 import { QualifyingResultsTable } from "./QualifyingResultsTable";
 import { RacePaceChart } from "./RacePaceChart";
 import { RaceResultsTable } from "./RaceResultsTable";
 import { SectorGapChart } from "./SectorGapChart";
+import { SpeedTrapComparisonCard } from "./SpeedTrapComparisonCard";
 import { TimeDeltaChart } from "./TimeDeltaChart";
 import { TopSpeedsCard } from "./TopSpeedsCard";
 import { TrackConditionsCard } from "./TrackConditionsCard";
+import { TrackDominanceMap } from "./TrackDominanceMap";
 import { TyreDegChart } from "./TyreDegChart";
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -95,6 +101,12 @@ export function RaceArchive() {
   const resultsQuery = useSessionResults(sessionQuery.data?.session_key);
   const positionsQuery = useSessionPositions(sessionQuery.data?.session_key);
   const weatherQuery = useSessionWeather(sessionQuery.data?.session_key);
+
+  // Fastest-lap telemetry for the selected drivers — quali one-lap analysis only.
+  const lapTelemetryQuery = useFastestLapTelemetry(
+    sessionType === "Qualifying" ? sessionQuery.data?.session_key : undefined,
+    sessionType === "Qualifying" ? chosenDrivers : undefined
+  );
 
   const meetingOptions = meetingsQuery.data ?? [];
   return (
@@ -242,8 +254,49 @@ export function RaceArchive() {
         </section>
       )}
 
-      {/* Row 1: Telemetry + Pit Strategy */}
-      <section className="grid gap-6 lg:grid-cols-[2fr,1fr] lg:gap-8">
+      {/* Qualifying one-lap analysis: who's faster where */}
+      {sessionType === "Qualifying" && (
+        <>
+          <TrackDominanceMap
+            telemetry={lapTelemetryQuery.data ?? []}
+            drivers={chosenDrivers}
+            isLoading={lapTelemetryQuery.isLoading || lapTelemetryQuery.isFetching}
+          />
+          <section className="grid gap-6 lg:grid-cols-2 lg:gap-8">
+            <DeltaVsDistanceChart
+              telemetry={lapTelemetryQuery.data ?? []}
+              drivers={chosenDrivers}
+              isLoading={lapTelemetryQuery.isLoading || lapTelemetryQuery.isFetching}
+            />
+            <MiniSectorComparison
+              telemetry={lapTelemetryQuery.data ?? []}
+              drivers={chosenDrivers}
+              isLoading={lapTelemetryQuery.isLoading || lapTelemetryQuery.isFetching}
+            />
+          </section>
+          <section className="grid gap-6 lg:grid-cols-2 lg:gap-8">
+            <SpeedTrapComparisonCard
+              laps={lapsQuery.data ?? []}
+              drivers={chosenDrivers}
+              isLoading={lapsQuery.isLoading}
+            />
+            <IdealLapCard
+              laps={allLapsQuery.data ?? []}
+              results={resultsQuery.data ?? []}
+              drivers={driversQuery.data ?? []}
+              isLoading={allLapsQuery.isLoading}
+            />
+          </section>
+        </>
+      )}
+
+      {/* Row 1: Telemetry (+ Pit Strategy for races) */}
+      <section
+        className={cn(
+          "grid gap-6 lg:gap-8",
+          sessionType === "Race" ? "lg:grid-cols-[2fr,1fr]" : "grid-cols-1"
+        )}
+      >
         <TelemetryChart
           sessionKey={sessionQuery.data?.session_key}
           data={telemetryQuery.chartData}
@@ -255,21 +308,30 @@ export function RaceArchive() {
           statusLabel={telemetryStatusLabel(telemetryQuery.isFetching)}
           footnote={sessionFootnote(sessionQuery.data)}
         />
-        <PitStrategyPanel
-          stints={stintsQuery.data ?? []}
-          drivers={driversQuery.data ?? []}
-          driverFilter={selectedDrivers}
-          isLoading={stintsQuery.isLoading}
-        />
+        {sessionType === "Race" && (
+          <PitStrategyPanel
+            stints={stintsQuery.data ?? []}
+            drivers={driversQuery.data ?? []}
+            driverFilter={selectedDrivers}
+            isLoading={stintsQuery.isLoading}
+          />
+        )}
       </section>
 
-      {/* Row 2: Time Delta + Sector Gap (theoretical ultimate) */}
-      <section className="grid gap-6 lg:grid-cols-2 lg:gap-8">
-        <TimeDeltaChart
-          laps={lapsQuery.data ?? []}
-          drivers={chosenDrivers}
-          isLoading={lapsQuery.isLoading}
-        />
+      {/* Row 2: Sector ultimate lap (+ cumulative delta for races) */}
+      <section
+        className={cn(
+          "grid gap-6 lg:gap-8",
+          sessionType === "Race" ? "lg:grid-cols-2" : "grid-cols-1"
+        )}
+      >
+        {sessionType === "Race" && (
+          <TimeDeltaChart
+            laps={lapsQuery.data ?? []}
+            drivers={chosenDrivers}
+            isLoading={lapsQuery.isLoading}
+          />
+        )}
         <SectorGapChart
           laps={lapsQuery.data ?? []}
           drivers={chosenDrivers}

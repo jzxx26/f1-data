@@ -548,6 +548,80 @@ def get_car_data(
 
 
 # ─────────────────────────────────────────────
+# /lap_telemetry  — single-lap telemetry with track position
+# Powers quali track-dominance map, delta-vs-distance, mini-sectors.
+# ─────────────────────────────────────────────
+@app.get("/lap_telemetry")
+def get_lap_telemetry(
+    session_key: int = Query(...),
+    driver_number: int = Query(...),
+    lap_number: Optional[int] = None,
+):
+    """Return distance-aligned telemetry (X/Y position, speed, time) for a
+    driver's fastest lap (or a specific lap if lap_number is given)."""
+    year, round_num, session_id = _decode_session_key(session_key)
+
+    try:
+        session = fastf1.get_session(year, round_num, session_id)
+        session.load(laps=True, telemetry=True, weather=False, messages=False)
+    except Exception as e:
+        log.error(f"Failed to load telemetry: {e}")
+        return JSONResponse({"points": []})
+
+    try:
+        laps = session.laps
+        drv_laps = laps[laps["DriverNumber"] == str(driver_number)]
+
+        if lap_number:
+            drv_laps = drv_laps[drv_laps["LapNumber"] == lap_number]
+
+        if drv_laps is None or drv_laps.empty:
+            return JSONResponse({"points": []})
+
+        lap = drv_laps.iloc[0] if lap_number else drv_laps.pick_fastest()
+        if lap is None or (hasattr(lap, "empty") and lap.empty):
+            return JSONResponse({"points": []})
+
+        tel = lap.get_telemetry()
+        if tel is None or tel.empty or "Distance" not in tel.columns or "X" not in tel.columns:
+            return JSONResponse({"points": []})
+
+        # Normalise time so the lap starts at t=0
+        t0 = tel["Time"].iloc[0] if "Time" in tel.columns else None
+
+        # Downsample large traces
+        if len(tel) > 1500:
+            step = len(tel) // 1500
+            tel = tel.iloc[::step]
+
+        points = []
+        for _, p in tel.iterrows():
+            t = p.get("Time")
+            if isinstance(t, pd.Timedelta) and isinstance(t0, pd.Timedelta):
+                time_s = (t - t0).total_seconds()
+            else:
+                time_s = _clean(t)
+            points.append({
+                "distance": _clean(p.get("Distance")),
+                "time": time_s,
+                "speed": _clean(p.get("Speed")),
+                "x": _clean(p.get("X")),
+                "y": _clean(p.get("Y")),
+            })
+
+        lap_time = lap.get("LapTime")
+        return JSONResponse({
+            "driver_number": driver_number,
+            "lap_number": int(lap.get("LapNumber")) if not pd.isna(lap.get("LapNumber", float("nan"))) else None,
+            "lap_time": lap_time.total_seconds() if isinstance(lap_time, pd.Timedelta) else None,
+            "points": points,
+        })
+    except Exception as e:
+        log.error(f"Failed to get lap telemetry: {e}")
+        return JSONResponse({"points": []})
+
+
+# ─────────────────────────────────────────────
 # /intervals  — gap to leader (from position data)
 # ─────────────────────────────────────────────
 @app.get("/intervals")

@@ -4,6 +4,7 @@ import {
   openf1Client,
   type Driver,
   type LapData,
+  type LapTelemetry,
   type PositionData,
   type RaceMeeting,
   type Session,
@@ -169,6 +170,29 @@ export function useSessionResults(sessionKey?: number) {
       return openf1Client.getSessionResults(sessionKey);
     },
     enabled: Boolean(sessionKey),
+    staleTime: 30 * 60_000,
+  });
+}
+
+/**
+ * Fetch the fastest-lap telemetry (X/Y position, speed, distance-aligned time)
+ * for the selected drivers — powers the quali track-dominance / delta views.
+ */
+export function useFastestLapTelemetry(sessionKey?: number, drivers?: Driver[]) {
+  const driverNums = drivers?.map((d) => d.driver_number) ?? [];
+  const driverKey = [...driverNums].sort((a, b) => a - b).join("-");
+  return useQuery<LapTelemetry[]>({
+    queryKey: ["fastf1", "lap-telemetry", sessionKey, driverKey],
+    queryFn: async () => {
+      if (!sessionKey || driverNums.length === 0) return [];
+      const results = await Promise.all(
+        driverNums.map((n) => openf1Client.getLapTelemetry(sessionKey, n))
+      );
+      return results.filter(
+        (r): r is LapTelemetry => r !== null && r.points.length > 0
+      );
+    },
+    enabled: Boolean(sessionKey) && driverNums.length > 0,
     staleTime: 30 * 60_000,
   });
 }
