@@ -110,51 +110,17 @@ export function RaceArchive() {
 
   const meetingOptions = meetingsQuery.data ?? [];
   return (
-    <div className="flex w-full flex-col gap-6 lg:gap-8">
-      <header className="rounded-2xl border border-white/[0.06] bg-[#111114] p-6">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-          <div className="max-w-2xl space-y-3">
-            <div className="flex items-center gap-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.4em] text-white/45">
-                Race Archive
-              </p>
-              <div className="flex rounded-lg border border-white/10 bg-black/40 p-0.5">
-                <button
-                  onClick={() => setSessionType("Race")}
-                  className={cn(
-                    "rounded-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition",
-                    sessionType === "Race"
-                      ? "bg-white/15 text-white"
-                      : "text-white/40 hover:text-white"
-                  )}
-                >
-                  Race
-                </button>
-                <button
-                  onClick={() => setSessionType("Qualifying")}
-                  className={cn(
-                    "rounded-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition",
-                    sessionType === "Qualifying"
-                      ? "bg-white/15 text-white"
-                      : "text-white/40 hover:text-white"
-                  )}
-                >
-                  Qualifying
-                </button>
-              </div>
-            </div>
-
-            <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+    <div className="flex w-full flex-col gap-4 lg:gap-5">
+      <header className="rounded-2xl border border-white/[0.06] bg-[#111114] px-5 py-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <h1 className="truncate text-2xl font-semibold tracking-tight text-white sm:text-3xl">
               {sessionQuery.data?.location ?? "Select a race"}
             </h1>
-            <p className="text-sm text-white/55">
+            <p className="mt-0.5 truncate text-xs text-white/45">
               {sessionQuery.data
-                ? `${
-                    sessionQuery.data.country_name ?? ""
-                  } · ${
-                    sessionQuery.data.session_name ?? "Race"
-                  } · session ${sessionQuery.data.session_key}`
-                : "Filter by season and pick a race to load full post-race analytics — pace, sectors, tyres, telemetry, weather."}
+                ? `${sessionQuery.data.country_name ?? ""} · ${sessionQuery.data.session_name ?? "Race"} · session ${sessionQuery.data.session_key}`
+                : "Pick a season and race to load post-race analytics"}
             </p>
           </div>
           <SearchPanel
@@ -163,6 +129,8 @@ export function RaceArchive() {
             meetings={meetingOptions}
             onSelectMeeting={setSelectedMeeting}
             selectedMeeting={selectedMeeting}
+            sessionType={sessionType}
+            onSessionTypeChange={setSessionType}
           />
         </div>
       </header>
@@ -224,7 +192,7 @@ export function RaceArchive() {
       )}
 
       {/* Fastest laps + top speeds (all drivers, independent of selection) */}
-      <section className="grid gap-6 lg:grid-cols-2 lg:gap-8">
+      <section className="grid gap-5 lg:grid-cols-2 lg:gap-6">
         <FastestLapsCard
           laps={allLapsQuery.data ?? []}
           drivers={driversQuery.data ?? []}
@@ -239,7 +207,7 @@ export function RaceArchive() {
 
       {/* Consistency + biggest movers */}
       {sessionType === "Race" && (
-        <section className="grid gap-6 lg:grid-cols-2 lg:gap-8">
+        <section className="grid gap-5 lg:grid-cols-2 lg:gap-6">
           <ConsistencyCard
             laps={allLapsQuery.data ?? []}
             drivers={driversQuery.data ?? []}
@@ -262,7 +230,7 @@ export function RaceArchive() {
             drivers={chosenDrivers}
             isLoading={lapTelemetryQuery.isLoading || lapTelemetryQuery.isFetching}
           />
-          <section className="grid gap-6 lg:grid-cols-2 lg:gap-8">
+          <section className="grid gap-5 lg:grid-cols-2 lg:gap-6 xl:grid-cols-4">
             <DeltaVsDistanceChart
               telemetry={lapTelemetryQuery.data ?? []}
               drivers={chosenDrivers}
@@ -273,8 +241,6 @@ export function RaceArchive() {
               drivers={chosenDrivers}
               isLoading={lapTelemetryQuery.isLoading || lapTelemetryQuery.isFetching}
             />
-          </section>
-          <section className="grid gap-6 lg:grid-cols-2 lg:gap-8">
             <SpeedTrapComparisonCard
               laps={lapsQuery.data ?? []}
               drivers={chosenDrivers}
@@ -293,7 +259,7 @@ export function RaceArchive() {
       {/* Row 1: Telemetry (+ Pit Strategy for races) */}
       <section
         className={cn(
-          "grid gap-6 lg:gap-8",
+          "grid gap-5 lg:gap-6",
           sessionType === "Race" ? "lg:grid-cols-[2fr,1fr]" : "grid-cols-1"
         )}
       >
@@ -321,7 +287,7 @@ export function RaceArchive() {
       {/* Row 2: Sector ultimate lap (+ cumulative delta for races) */}
       <section
         className={cn(
-          "grid gap-6 lg:gap-8",
+          "grid gap-5 lg:gap-6",
           sessionType === "Race" ? "lg:grid-cols-2" : "grid-cols-1"
         )}
       >
@@ -365,6 +331,8 @@ interface SearchPanelProps {
   }>;
   onSelectMeeting: (meetingKey: number | null) => void;
   selectedMeeting: number | null;
+  sessionType: "Race" | "Qualifying";
+  onSessionTypeChange: (type: "Race" | "Qualifying") => void;
 }
 
 function SearchPanel({
@@ -373,6 +341,8 @@ function SearchPanel({
   meetings,
   onSelectMeeting,
   selectedMeeting,
+  sessionType,
+  onSessionTypeChange,
 }: SearchPanelProps) {
   const years = useMemo(() => {
     return Array.from(
@@ -381,94 +351,77 @@ function SearchPanel({
     );
   }, []);
 
+  const selectCls =
+    "rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400";
+
   return (
-    <div className="flex w-full flex-1 flex-col gap-4 rounded-2xl border border-white/10 bg-black/40 p-4 text-xs text-white/70">
-      <div className="grid gap-4 sm:grid-cols-3">
-        <label className="flex flex-col gap-1">
-          <span className="text-[11px] uppercase tracking-[0.3em] text-white/40">
-            Season
-          </span>
-          <select
-            value={filters.year ?? CURRENT_YEAR}
-            onChange={(event) =>
-              onFiltersChange({ ...filters, year: Number(event.target.value) })
-            }
-            className="rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
-          >
-            {years.map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-[11px] uppercase tracking-[0.3em] text-white/40">
-            Circuit search
-          </span>
-          <input
-            type="text"
-            placeholder="e.g. Austin"
-            value={filters.circuit ?? ""}
-            onChange={(event) =>
-              onFiltersChange({
-                ...filters,
-                circuit: event.target.value || undefined,
-              })
-            }
-            className="rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
-          />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-[11px] uppercase tracking-[0.3em] text-white/40">
-            Driver number
-          </span>
-          <input
-            type="number"
-            min={1}
-            max={99}
-            value={filters.driverNumber ?? ""}
-            onChange={(event) =>
-              onFiltersChange({
-                ...filters,
-                driverNumber: event.target.value
-                  ? Number(event.target.value)
-                  : undefined,
-              })
-            }
-            className="rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
-          />
-        </label>
-      </div>
-      <div className="flex h-12 items-center justify-between gap-3 rounded-xl border border-white/5 bg-black/50 px-3 text-xs text-white/60">
-        <span className="text-[11px] uppercase tracking-[0.3em] text-white/40">
-          Select meeting
-        </span>
-        <select
-          value={selectedMeeting ?? ""}
-          onChange={(event) =>
-            onSelectMeeting(
-              event.target.value ? Number(event.target.value) : null
-            )
-          }
-          className="w-2/3 rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+    <div className="flex flex-wrap items-center gap-2">
+      {/* Race / Qualifying switcher */}
+      <div className="flex rounded-lg border border-white/10 bg-black/40 p-0.5">
+        <button
+          onClick={() => onSessionTypeChange("Race")}
+          className={cn(
+            "rounded-md px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition",
+            sessionType === "Race"
+              ? "bg-white/15 text-white"
+              : "text-white/40 hover:text-white"
+          )}
         >
-          {meetings.length === 0 ? (
-            <option value="" disabled>
-              No meetings found for this filter
-            </option>
-          ) : null}
-          {meetings.map((meeting) => (
-            <option key={meeting.meeting_key} value={meeting.meeting_key}>
-              {meeting.meeting_name} •{" "}
-              {new Date(meeting.date_start).toLocaleDateString(undefined, {
-                month: "short",
-                day: "numeric",
-              })}
-            </option>
-          ))}
-        </select>
+          Race
+        </button>
+        <button
+          onClick={() => onSessionTypeChange("Qualifying")}
+          className={cn(
+            "rounded-md px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition",
+            sessionType === "Qualifying"
+              ? "bg-white/15 text-white"
+              : "text-white/40 hover:text-white"
+          )}
+        >
+          Qualifying
+        </button>
       </div>
+
+      {/* Year dropdown */}
+      <select
+        value={filters.year ?? CURRENT_YEAR}
+        onChange={(event) =>
+          onFiltersChange({ ...filters, year: Number(event.target.value) })
+        }
+        className={selectCls}
+        aria-label="Season"
+      >
+        {years.map((year) => (
+          <option key={year} value={year}>
+            {year}
+          </option>
+        ))}
+      </select>
+
+      {/* Meeting / Race dropdown */}
+      <select
+        value={selectedMeeting ?? ""}
+        onChange={(event) =>
+          onSelectMeeting(event.target.value ? Number(event.target.value) : null)
+        }
+        className={cn(selectCls, "max-w-[220px] flex-1 sm:max-w-xs")}
+        aria-label="Race"
+      >
+        {meetings.length === 0 ? (
+          <option value="" disabled>
+            No races found
+          </option>
+        ) : null}
+        {meetings.map((meeting) => (
+          <option key={meeting.meeting_key} value={meeting.meeting_key}>
+            {meeting.meeting_name} ·{" "}
+            {new Date(meeting.date_start).toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+            })}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
