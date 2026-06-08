@@ -119,43 +119,76 @@ export function TelemetryChart({
     const anchor = (points: typeof d1CarData) =>
       points.length > 0 ? new Date(points[0].date).getTime() : null;
 
-    const d1Start = anchor(d1CarData);
-    const d2Start = anchor(d2CarData);
-
-    const combinedList: Array<{
+    type Sample = {
       elapsed: number;
-      speed1?: number;
-      throttle1?: number;
-      brake1?: number;
-      speed2?: number;
-      throttle2?: number;
-      brake2?: number;
-    }> = [];
-    if (d1Start !== null) {
-      d1CarData.forEach((p) => {
-        const elapsed = (new Date(p.date).getTime() - d1Start) / 1000;
+      speed: number;
+      throttle: number;
+      brake: number;
+    };
+
+    const toSeries = (points: typeof d1CarData, start: number | null): Sample[] => {
+      if (start === null) return [];
+      const out: Sample[] = [];
+      points.forEach((p) => {
+        const elapsed = (new Date(p.date).getTime() - start) / 1000;
         if (!Number.isFinite(elapsed) || elapsed < 0) return;
-        combinedList.push({
+        out.push({
           elapsed: Number(elapsed.toFixed(2)),
-          speed1: p.speed,
-          throttle1: p.throttle,
-          brake1: p.brake,
+          speed: p.speed,
+          throttle: p.throttle,
+          brake: p.brake,
         });
       });
-    }
-    if (d2Start !== null && d2 !== undefined) {
-      d2CarData.forEach((p) => {
-        const elapsed = (new Date(p.date).getTime() - d2Start) / 1000;
-        if (!Number.isFinite(elapsed) || elapsed < 0) return;
-        combinedList.push({
-          elapsed: Number(elapsed.toFixed(2)),
-          speed2: p.speed,
-          throttle2: p.throttle,
-          brake2: p.brake,
-        });
-      });
-    }
-    return combinedList.sort((a, b) => a.elapsed - b.elapsed);
+      return out.sort((a, b) => a.elapsed - b.elapsed);
+    };
+
+    const s1 = toSeries(d1CarData, anchor(d1CarData));
+    const s2 = d2 !== undefined ? toSeries(d2CarData, anchor(d2CarData)) : [];
+
+    // Linearly interpolate a driver's sample at an arbitrary elapsed time so
+    // both drivers can share one row per x-position (otherwise the tooltip
+    // only ever shows whichever driver owns that exact timestamp).
+    const sampleAt = (series: Sample[], t: number): Sample | null => {
+      if (series.length === 0) return null;
+      if (t < series[0].elapsed || t > series[series.length - 1].elapsed)
+        return null;
+      let lo = 0;
+      let hi = series.length - 1;
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if (series[mid].elapsed < t) lo = mid + 1;
+        else hi = mid;
+      }
+      const b = series[lo];
+      if (b.elapsed === t || lo === 0) return b;
+      const a = series[lo - 1];
+      const span = b.elapsed - a.elapsed;
+      const f = span > 0 ? (t - a.elapsed) / span : 0;
+      return {
+        elapsed: t,
+        speed: a.speed + (b.speed - a.speed) * f,
+        throttle: a.throttle + (b.throttle - a.throttle) * f,
+        brake: a.brake + (b.brake - a.brake) * f,
+      };
+    };
+
+    const grid = Array.from(
+      new Set([...s1, ...s2].map((p) => p.elapsed))
+    ).sort((a, b) => a - b);
+
+    return grid.map((t) => {
+      const p1 = sampleAt(s1, t);
+      const p2 = sampleAt(s2, t);
+      return {
+        elapsed: t,
+        speed1: p1?.speed,
+        throttle1: p1?.throttle,
+        brake1: p1?.brake,
+        speed2: p2?.speed,
+        throttle2: p2?.throttle,
+        brake2: p2?.brake,
+      };
+    });
   }, [carData, d1, d2]);
   const chartLines = useMemo(
     () =>
@@ -493,6 +526,42 @@ export function TelemetryChart({
               </select>
             </div>
           </div>
+          {hasDetailedData && (
+            <div className="mb-3 flex flex-wrap items-center gap-4 px-2 text-[11px]">
+              {d1Info && (
+                <span className="flex items-center gap-2">
+                  <span
+                    className="block h-0.5 w-5 rounded-full"
+                    style={{ backgroundColor: d1Color }}
+                    aria-hidden
+                  />
+                  <span className="font-semibold text-white/80">
+                    {d1Info.name_acronym}
+                  </span>
+                  {lap1 !== undefined && (
+                    <span className="text-white/40">L{lap1}</span>
+                  )}
+                </span>
+              )}
+              {d2 !== undefined && d2Info && (
+                <span className="flex items-center gap-2">
+                  <span
+                    className="block h-0.5 w-5 rounded-full"
+                    style={{
+                      backgroundImage: `repeating-linear-gradient(90deg, ${d2Color} 0 4px, transparent 4px 7px)`,
+                    }}
+                    aria-hidden
+                  />
+                  <span className="font-semibold text-white/80">
+                    {d2Info.name_acronym}
+                  </span>
+                  {lap2 !== undefined && (
+                    <span className="text-white/40">L{lap2}</span>
+                  )}
+                </span>
+              )}
+            </div>
+          )}
           {!hasDetailedData ? (
             <div className="flex h-[320px] items-center justify-center text-xs text-white/40">
               {isDetailedLoading

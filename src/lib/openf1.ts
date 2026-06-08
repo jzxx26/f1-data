@@ -116,6 +116,21 @@ export interface LapData {
   duration_sector_3?: number;
 }
 
+export interface LapTelemetryPoint {
+  distance: number;
+  time: number;
+  speed: number;
+  x: number;
+  y: number;
+}
+
+export interface LapTelemetry {
+  driver_number: number;
+  lap_number?: number | null;
+  lap_time?: number | null;
+  points: LapTelemetryPoint[];
+}
+
 export interface StintData {
   driver_number: number;
   stint_number: number;
@@ -353,6 +368,28 @@ export const openf1Client = {
       driver_number: driverNumber,
       lap_number: lapNumber,
     });
+  },
+
+  async getLapTelemetry(
+    sessionKey: number,
+    driverNumber: number,
+    lapNumber?: number
+  ): Promise<LapTelemetry | null> {
+    try {
+      const data = await fetchJson<LapTelemetry>("lap_telemetry", {
+        session_key: sessionKey,
+        driver_number: driverNumber,
+        lap_number: lapNumber,
+      });
+      // fetchJson returns [] on 404 — guard against the non-object shape.
+      if (!data || Array.isArray(data) || !Array.isArray(data.points)) {
+        return null;
+      }
+      return data;
+    } catch (error) {
+      console.error("❌ Failed to fetch lap telemetry:", error);
+      return null;
+    }
   },
 
   async getPositions(sessionKey: number): Promise<PositionData[]> {
