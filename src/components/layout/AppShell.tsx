@@ -1,12 +1,21 @@
 "use client";
 
+import { cn } from "@/lib/utils";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ReactNode } from "react";
+
+const NAV = [
+  { href: "/", label: "Archive" },
+  { href: "/live", label: "Live" },
+];
 
 interface AppShellProps {
   children: ReactNode;
 }
 
 export function AppShell({ children }: AppShellProps) {
+  const pathname = usePathname();
   return (
     <div className="relative flex min-h-screen w-full flex-col bg-[#0a0a0c] text-white/90">
       <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#0a0a0c]/85 backdrop-blur-xl">
@@ -20,9 +29,26 @@ export function AppShell({ children }: AppShellProps) {
                 Pitwall
               </span>
               <span className="text-[10px] uppercase tracking-[0.3em] text-white/40">
-                Post-race analytics · FastF1
+                Analytics · FastF1 · Live timing
               </span>
             </div>
+          </div>
+          <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1">
+            {NAV.map((item) => {
+              const current = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "rounded-full px-4 py-1 text-[11px] uppercase tracking-[0.25em] transition-colors",
+                    current ? "bg-white/10 text-white" : "text-white/50 hover:text-white/80"
+                  )}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
           </div>
           <span className="hidden rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-white/50 sm:inline-flex">
             v0.1 · build

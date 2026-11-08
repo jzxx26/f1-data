@@ -2,3 +2,5 @@ fastf1>=3.4.0
 fastapi>=0.115.0
 uvicorn[standard]>=0.32.0
 pandas>=2.2.0
+requests>=2.31,<3
+websockets>=15,<17

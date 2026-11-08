@@ -1,0 +1,6 @@
+backend/.env
+backend/.venv/
+backend/recordings/
+.env*
+node_modules/
+.next/

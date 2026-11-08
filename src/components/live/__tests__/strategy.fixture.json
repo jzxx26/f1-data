@@ -1,0 +1,269 @@
+{
+    "driver": "NOR",
+    "summary": {
+        "driver": "NOR",
+        "number": "1",
+        "position": 1,
+        "status": "ON TRACK",
+        "gap": 0.0,
+        "laps_down": 0,
+        "ahead": null,
+        "to_ahead": null,
+        "behind": "VER",
+        "to_behind": 9.903,
+        "compound": "SOFT",
+        "tyre_age": 23,
+        "tyre_new": true,
+        "pits": 1,
+        "team_name": "McLaren",
+        "team_colour": "#F47600"
+    },
+    "prediction": {
+        "driver": "NOR",
+        "status": "ok",
+        "net_pit_loss": 20.0,
+        "reason": "",
+        "current_position": 1,
+        "current_gap": 0.0,
+        "rejoin_gap": 20.0,
+        "position": 4,
+        "position_range": null,
+        "ahead": [
+            {
+                "driver": "ANT",
+                "position": 3,
+                "gap": 17.382,
+                "delta": -2.618,
+                "status": "ON TRACK"
+            },
+            {
+                "driver": "HAD",
+                "position": 2,
+                "gap": 10.891,
+                "delta": -9.109,
+                "status": "ON TRACK"
+            }
+        ],
+        "behind": [
+            {
+                "driver": "PIA",
+                "position": 5,
+                "gap": 23.789,
+                "delta": 3.789,
+                "status": "ON TRACK"
+            },
+            {
+                "driver": "LAW",
+                "position": 6,
+                "gap": 35.081,
+                "delta": 15.081,
+                "status": "ON TRACK"
+            }
+        ],
+        "projected_order": [
+            {
+                "driver": "VER",
+                "position": 1,
+                "gap": 9.903,
+                "delta": -10.097,
+                "status": "ON TRACK"
+            },
+            {
+                "driver": "HAD",
+                "position": 2,
+                "gap": 10.891,
+                "delta": -9.109,
+                "status": "ON TRACK"
+            },
+            {
+                "driver": "ANT",
+                "position": 3,
+                "gap": 17.382,
+                "delta": -2.618,
+                "status": "ON TRACK"
+            },
+            {
+                "driver": "NOR",
+                "position": 4,
+                "gap": 20.0,
+                "delta": 0.0,
+                "status": "IN PIT"
+            },
+            {
+                "driver": "PIA",
+                "position": 5,
+                "gap": 23.789,
+                "delta": 3.789,
+                "status": "ON TRACK"
+            },
+            {
+                "driver": "LAW",
+                "position": 6,
+                "gap": 35.081,
+                "delta": 15.081,
+                "status": "ON TRACK"
+            },
+            {
+                "driver": "RUS",
+                "position": 7,
+                "gap": 40.543,
+                "delta": 20.543,
+                "status": "ON TRACK"
+            },
+            {
+                "driver": "HUL",
+                "position": 8,
+                "gap": 49.52,
+                "delta": 29.52,
+                "status": "ON TRACK"
+            },
+            {
+                "driver": "LIN",
+                "position": 9,
+                "gap": 52.175,
+                "delta": 32.175,
+                "status": "ON TRACK"
+            },
+            {
+                "driver": "LEC",
+                "position": 10,
+                "gap": 62.948,
+                "delta": 42.948,
+                "status": "ON TRACK"
+            },
+            {
+                "driver": "ALO",
+                "position": 11,
+                "gap": 64.584,
+                "delta": 44.584,
+                "status": "ON TRACK"
+            },
+            {
+                "driver": "ALB",
+                "position": 12,
+                "gap": 68.088,
+                "delta": 48.088,
+                "status": "ON TRACK"
+            },
+            {
+                "driver": "COL",
+                "position": 13,
+                "gap": 68.517,
+                "delta": 48.517,
+                "status": "ON TRACK"
+            },
+            {
+                "driver": "HAM",
+                "position": 14,
+                "gap": 76.485,
+                "delta": 56.485,
+                "status": "ON TRACK"
+            },
+            {
+                "driver": "GAS",
+                "position": 15,
+                "gap": 88.742,
+                "delta": 68.742,
+                "status": "ON TRACK"
+            },
+            {
+                "driver": "BEA",
+                "position": 16,
+                "gap": 92.583,
+                "delta": 72.583,
+                "status": "ON TRACK"
+            },
+            {
+                "driver": "SAI",
+                "position": 17,
+                "gap": 101.599,
+                "delta": 81.599,
+                "status": "ON TRACK"
+            },
+            {
+                "driver": "PER",
+                "position": 18,
+                "gap": 107.082,
+                "delta": 87.082,
+                "status": "ON TRACK"
+            },
+            {
+                "driver": "CAM",
+                "position": 19,
+                "gap": 119.159,
+                "delta": 99.159,
+                "status": "ON TRACK"
+            },
+            {
+                "driver": "BOR",
+                "position": 20,
+                "gap": 119.411,
+                "delta": 99.411,
+                "status": "ON TRACK"
+            }
+        ],
+        "warnings": [],
+        "assumptions": [
+            "Every other car keeps its current gap to the leader: unchanged relative pace through the stop, and no one else pits.",
+            "The net pit loss is the value set on the slider: an assumption, not a measurement. The observed pit lane time is shown beside it for reference and is not used, since a car also spends time on that stretch when it stays out.",
+            "Positions are race classification by time behind the leader, measured at the timing line; a car that rejoins next to a lapped car is not in a fight with it."
+        ],
+        "loss_to_drop": 3.789,
+        "loss_to_gain": 2.618,
+        "drop_to": "PIA",
+        "gain_on": "ANT",
+        "places_lost": 3
+    },
+    "scenarios": [
+        {
+            "net_pit_loss": 18.0,
+            "position": 4,
+            "position_range": null,
+            "status": "uncertain"
+        },
+        {
+            "net_pit_loss": 20.0,
+            "position": 4,
+            "position_range": null,
+            "status": "ok"
+        },
+        {
+            "net_pit_loss": 22.0,
+            "position": 4,
+            "position_range": null,
+            "status": "ok"
+        }
+    ],
+    "net_loss": {
+        "value": 20.0,
+        "default": 20.0,
+        "range": [
+            15.0,
+            35.0
+        ],
+        "note": "Net pit loss is how much longer a stop takes than staying out: the pit lane time minus the time the same stretch takes on track. The timing feed does not report it and it is not measured here, so it is an assumption: 20 s is a generic starting point, not a figure for this circuit.",
+        "check": null
+    },
+    "observed_pit_lane": {
+        "median": null,
+        "stops": 2
+    },
+    "stale": null,
+    "session": {
+        "gp": "S\u00e3o Paulo Grand Prix",
+        "country": "Brazil",
+        "circuit": "Interlagos",
+        "session_name": "Race",
+        "session_type": "Race",
+        "status": "Started",
+        "current_lap": 40,
+        "total_laps": 71,
+        "clock_remaining": "1:05:55",
+        "track_status": "1",
+        "track_message": "AllClear",
+        "flag": "GREEN",
+        "last_heartbeat": "2026-11-08T17:57:13.9541306Z",
+        "data_age_s": 11.3,
+        "is_race": true
+    }
+}

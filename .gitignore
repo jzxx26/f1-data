@@ -46,3 +46,9 @@ backend/__pycache__/main.cpython-314.pyc
 backend/cache/fastf1_http_cache.sqlite
 backend/__pycache__/main.cpython-314.pyc
 backend/cache/fastf1_http_cache.sqlite
+
+# live backend (local only)
+backend/.venv/
+backend/recordings/
+__pycache__/
+.pytest_cache/

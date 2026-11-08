@@ -28,6 +28,14 @@ fastf1.Cache.enable_cache(CACHE_DIR)
 # ── App ─────────────────────────────────────────────────────────────────────
 app = FastAPI(title="F1 Telemetry API", version="1.0.0")
 
+# Live timing (local only: off unless F1_LIVE_ENABLED=1 in backend/.env).
+from live.service import load_env  # noqa: E402
+
+load_env()
+from live.api import router as live_router  # noqa: E402
+
+app.include_router(live_router)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
