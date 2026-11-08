@@ -115,6 +115,14 @@ def get_telemetry(drivers: str = "", seconds: float = Query(60.0, ge=5, le=600))
     return snapshot.telemetry(service.adapter, codes, seconds)
 
 
+@router.get("/gaps")
+def get_gaps(drivers: str = "", minutes: float = Query(30.0, ge=1, le=360)) -> dict:
+    """Gap to the leader over time for ``drivers`` (comma-separated codes; all when empty)."""
+    _require_enabled()
+    codes = [code.strip().upper() for code in drivers.split(",") if code.strip()]
+    return snapshot.clean(service.history.series(codes, minutes))
+
+
 @router.get("/positions")
 def get_positions() -> dict:
     _require_enabled()

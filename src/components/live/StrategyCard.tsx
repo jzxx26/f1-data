@@ -76,27 +76,15 @@ export function StrategyCard({
   const currentPosition = new Map(order.map((code, index) => [code, index + 1]));
 
   return (
-    <section className="flex flex-col rounded-3xl border border-white/5 bg-black/40 p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.03)]">
-      <header className="mb-4 flex items-center justify-between">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/50">
-            Strategy
-          </p>
-          <h2 className="text-lg font-semibold text-white">If they pitted now</h2>
-        </div>
-        <span className="rounded-full bg-white/5 px-3 py-1 text-[11px] text-white/60">
-          {isFetching ? "Updating…" : "Estimate"}
-        </span>
-      </header>
-
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-        <div className="flex flex-col gap-4">
+    <div className="@container h-full overflow-auto pr-1 text-xs" aria-busy={isFetching}>
+      <div className="grid gap-3 @3xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        <div className="flex flex-col gap-2.5">
           <label className="flex flex-col gap-1.5 text-xs text-white/60">
             Driver
             <select
               value={driver ?? ""}
               onChange={(event) => onDriver(event.target.value)}
-              className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white outline-none focus:border-white/30"
+              className="rounded-xl border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-white outline-none focus:border-white/30"
             >
               {order.map((code, index) => (
                 <option key={code} value={code} className="bg-[#0a0a0c]">
@@ -107,7 +95,7 @@ export function StrategyCard({
           </label>
 
           {summary ? (
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-2xl border border-white/5 bg-white/[0.02] p-4 text-sm">
+            <dl className="grid grid-cols-2 gap-x-3 gap-y-1 rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2 text-xs">
               <dt className="text-white/45">Driver</dt>
               <dd className="flex items-center gap-2 font-semibold text-white">
                 <span
@@ -176,12 +164,12 @@ export function StrategyCard({
               </button>
               <span className="text-[11px] text-white/40">Scenarios ±2 s below</span>
             </div>
-            <p className="rounded-xl border border-amber-300/15 bg-amber-400/[0.05] p-3 text-[11px] leading-relaxed text-amber-100/80">
+            <p className="rounded-xl border border-amber-300/15 bg-amber-400/[0.05] px-2.5 py-2 text-[10px] leading-snug text-amber-100/80">
               <span className="font-semibold uppercase tracking-[0.2em] text-amber-200/80">Assumption · </span>
               {data?.net_loss.note ??
                 "Net pit loss is how much longer a stop takes than staying out. It is not measured; set it for the circuit."}
             </p>
-            <p className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-[11px] leading-relaxed text-white/55">
+            <p className="rounded-xl border border-white/5 bg-white/[0.02] px-2.5 py-2 text-[10px] leading-snug text-white/55">
               <span className="font-semibold uppercase tracking-[0.2em] text-white/60">Observed · </span>
               {data?.observed_pit_lane.median != null
                 ? `Median pit lane time ${data.observed_pit_lane.median.toFixed(1)} s over ${data.observed_pit_lane.stops} stops (entry to exit). Reference only, not used: a car that stays out also needs time to cover that stretch.`
@@ -190,21 +178,21 @@ export function StrategyCard({
           </div>
         </div>
 
-        <div className="flex min-w-0 flex-col gap-4">
+        <div className="flex min-w-0 flex-col gap-2.5">
           {error ? (
-            <p className="rounded-2xl border border-red-400/20 bg-red-500/[0.06] p-4 text-sm text-red-200">
+            <p className="rounded-xl border border-red-400/20 bg-red-500/[0.06] p-2.5 text-xs text-red-200">
               {error.message}
             </p>
           ) : null}
           {data?.stale ? (
-            <p className="rounded-2xl border border-amber-300/20 bg-amber-400/[0.06] p-3 text-sm text-amber-100">
+            <p className="rounded-xl border border-amber-300/20 bg-amber-400/[0.06] p-2 text-xs text-amber-100">
               {data.stale}
             </p>
           ) : null}
 
           {prediction && hasPlace ? (
             <>
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-4 gap-2">
                 {[
                   ["Now", prediction.current_position ? `P${prediction.current_position}` : "–"],
                   ["After the stop", placeText(prediction.position, prediction.position_range)],
@@ -218,9 +206,9 @@ export function StrategyCard({
                   ],
                   ["Net loss", `${prediction.net_pit_loss.toFixed(1)} s`],
                 ].map(([label, value]) => (
-                  <div key={label} className="rounded-2xl border border-white/5 bg-white/[0.03] p-3">
+                  <div key={label} className="rounded-xl border border-white/5 bg-white/[0.03] px-2.5 py-1.5">
                     <div className="text-[10px] uppercase tracking-[0.25em] text-white/45">{label}</div>
-                    <div className="mt-1 text-xl font-semibold tabular-nums text-white">{value}</div>
+                    <div className="mt-0.5 text-base font-semibold tabular-nums text-white">{value}</div>
                   </div>
                 ))}
               </div>
@@ -234,14 +222,14 @@ export function StrategyCard({
               ) : null}
 
               <div className="overflow-hidden rounded-2xl border border-white/5">
-                <table className="w-full text-sm">
+                <table className="w-full text-xs">
                   <thead className="bg-white/[0.03] text-[10px] uppercase tracking-[0.25em] text-white/45">
                     <tr>
-                      <th className="px-3 py-2 text-left">Pos</th>
-                      <th className="px-3 py-2 text-left">Driver</th>
-                      <th className="px-3 py-2 text-left">Now</th>
-                      <th className="px-3 py-2 text-right">Gap</th>
-                      <th className="px-3 py-2 text-right">To {prediction.driver}</th>
+                      <th className="px-2 py-1 text-left">Pos</th>
+                      <th className="px-2 py-1 text-left">Driver</th>
+                      <th className="px-2 py-1 text-left">Now</th>
+                      <th className="px-2 py-1 text-right">Gap</th>
+                      <th className="px-2 py-1 text-right">To {prediction.driver}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -256,8 +244,8 @@ export function StrategyCard({
                             isMe ? "bg-red-500/[0.12] ring-1 ring-inset ring-red-400/50" : ""
                           )}
                         >
-                          <td className="px-3 py-1.5 tabular-nums text-white/80">{row.position}</td>
-                          <td className="px-3 py-1.5">
+                          <td className="px-2 py-1 tabular-nums text-white/80">{row.position}</td>
+                          <td className="px-2 py-1">
                             <span className="flex items-center gap-2 font-semibold text-white">
                               <span
                                 aria-hidden
@@ -270,11 +258,11 @@ export function StrategyCard({
                               ) : null}
                             </span>
                           </td>
-                          <td className="px-3 py-1.5 tabular-nums text-white/45">{now ? `P${now}` : "–"}</td>
-                          <td className="px-3 py-1.5 text-right tabular-nums text-white/60">
+                          <td className="px-2 py-1 tabular-nums text-white/45">{now ? `P${now}` : "–"}</td>
+                          <td className="px-2 py-1 text-right tabular-nums text-white/60">
                             {row.gap === null ? "–" : row.gap.toFixed(3)}
                           </td>
-                          <td className="px-3 py-1.5 text-right tabular-nums text-white">
+                          <td className="px-2 py-1 text-right tabular-nums text-white">
                             {isMe ? "PITS" : signed(row.delta)}
                           </td>
                         </tr>
@@ -293,7 +281,7 @@ export function StrategyCard({
                     <div
                       key={scenario.net_pit_loss}
                       className={cn(
-                        "rounded-2xl border p-3",
+                        "rounded-xl border px-2.5 py-1.5",
                         scenario.net_pit_loss === prediction.net_pit_loss
                           ? "border-white/20 bg-white/[0.05]"
                           : "border-white/5 bg-white/[0.02]"
@@ -302,7 +290,7 @@ export function StrategyCard({
                       <div className="text-[10px] uppercase tracking-[0.2em] text-white/45">
                         {scenario.net_pit_loss.toFixed(1)} s net
                       </div>
-                      <div className="mt-1 text-lg font-semibold tabular-nums text-white">
+                      <div className="mt-0.5 text-base font-semibold tabular-nums text-white">
                         {placeText(scenario.position, scenario.position_range)}
                       </div>
                     </div>
@@ -322,11 +310,11 @@ export function StrategyCard({
                 ))}
             </>
           ) : prediction ? (
-            <p className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-white/70">
+            <p className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs text-white/70">
               {prediction.reason}.
             </p>
           ) : (
-            <p className="text-sm text-white/50">Pick a driver.</p>
+            <p className="text-xs text-white/50">Pick a driver.</p>
           )}
 
           {prediction ? (
@@ -337,6 +325,6 @@ export function StrategyCard({
           ) : null}
         </div>
       </div>
-    </section>
+    </div>
   );
 }

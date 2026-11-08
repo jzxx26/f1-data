@@ -32,7 +32,7 @@ def client(monkeypatch):
 def _fed():
     """The recording fed once for the module (it takes a while)."""
     service.stop()
-    replay = Replay(service.adapter, DEFAULT_REPLAY)
+    replay = Replay(service.adapter, DEFAULT_REPLAY, history=service.history)
     replay.feed_all()
     service.replay, service.mode = replay, "replay"
     yield
@@ -174,3 +174,25 @@ class TestOnlyThisMachinesFrontend:
         response = client.get("/", headers={"Origin": "https://evil.example"})
 
         assert response.status_code == 200
+
+
+class TestGapHistory:
+    def test_the_replay_samples_every_two_seconds_of_race_time(self, replayed):
+        body = replayed.get("/live/gaps", params={"drivers": "NOR,VER", "minutes": 360}).json()
+
+        assert len(body["t"]) > 300  # ~23 minutes of race at one sample per 2 s
+        steps = [b - a for a, b in zip(body["t"], body["t"][1:], strict=False)]
+        assert min(steps) >= 2.0
+        assert body["t"][-1] == 0.0
+        assert set(body["gaps"]) == {"NOR", "VER"}
+        assert body["gaps"]["NOR"][-1] == 0.0  # the leader at the end of the recording
+
+    def test_lapped_cars_have_a_gap_from_the_interval_chain(self, replayed):
+        body = replayed.get("/live/gaps", params={"drivers": "BEA"}).json()
+
+        assert body["gaps"]["BEA"][-1] is not None and body["gaps"]["BEA"][-1] > 80
+
+    def test_the_window_trims_older_samples(self, replayed):
+        short = replayed.get("/live/gaps", params={"minutes": 5}).json()
+
+        assert short["t"][0] >= -300.0

@@ -32,41 +32,36 @@ export function TrackMapCard({ data, drivers, selected, tokenSet }: TrackMapCard
     };
   }, [data]);
 
+  if (!view) {
+    return (
+      <p className="flex h-full items-center justify-center px-4 text-center text-xs text-white/50">
+        {tokenSet
+          ? "No positions yet. They arrive once a session is running."
+          : "Car positions need an F1TV subscription token: set F1TV_SUBSCRIPTION_TOKEN in backend/.env."}
+      </p>
+    );
+  }
   return (
-    <section className="flex flex-col rounded-3xl border border-white/5 bg-black/40 p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.03)]">
-      <header className="mb-3">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/50">Track</p>
-        <h2 className="text-lg font-semibold text-white">Car positions</h2>
-      </header>
-      {view ? (
-        <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="mx-auto w-full max-w-[460px]" role="img" aria-label="Car positions on track">
-          <path d={view.path} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth={10} strokeLinejoin="round" />
-          {view.cars.map((car) => {
-            const isSelected = car.driver === selected;
-            return (
-              <g key={car.driver}>
-                <circle
-                  cx={car.at[0]}
-                  cy={car.at[1]}
-                  r={isSelected ? 8 : 5.5}
-                  fill={teamColour(drivers, car.driver)}
-                  stroke={isSelected ? "#fff" : "#0a0a0c"}
-                  strokeWidth={isSelected ? 2 : 1}
-                />
-                <text x={car.at[0] + 9} y={car.at[1] + 3} fontSize={9} fill="rgba(255,255,255,0.7)">
-                  {car.driver}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
-      ) : (
-        <p className="py-10 text-center text-sm text-white/50">
-          {tokenSet
-            ? "No positions yet. They arrive once a session is running."
-            : "Car positions need an F1TV subscription token: set F1TV_SUBSCRIPTION_TOKEN in backend/.env."}
-        </p>
-      )}
-    </section>
+    <svg viewBox={`0 0 ${SIZE} ${SIZE}`} preserveAspectRatio="xMidYMid meet" className="h-full w-full" role="img" aria-label="Car positions on track">
+      <path d={view.path} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth={10} strokeLinejoin="round" />
+      {view.cars.map((car) => {
+        const isSelected = car.driver === selected;
+        return (
+          <g key={car.driver}>
+            <circle
+              cx={car.at[0]}
+              cy={car.at[1]}
+              r={isSelected ? 8 : 5.5}
+              fill={teamColour(drivers, car.driver)}
+              stroke={isSelected ? "#fff" : "#0a0a0c"}
+              strokeWidth={isSelected ? 2 : 1}
+            />
+            <text x={car.at[0] + 9} y={car.at[1] + 3} fontSize={10} fill="rgba(255,255,255,0.75)">
+              {car.driver}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
   );
 }

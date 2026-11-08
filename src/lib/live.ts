@@ -57,6 +57,8 @@ export interface StandingRow {
   IntervalSeconds: number | null;
   BestLap: string;
   LastLap: string;
+  LastSeconds?: number | null;
+  BestSeconds?: number | null;
   LastFlag: "sb" | "pb" | null;
   Status: string;
   Pits: number | null;
@@ -77,11 +79,23 @@ export interface RaceControlMessage {
   Message?: string | null;
 }
 
+export interface StintRow {
+  Driver: string;
+  Stint: number;
+  Compound: string | null;
+  New: boolean | null;
+  TyreAge: number | null;
+  LapStart: number;
+  LapEnd: number;
+  LapCount: number;
+}
+
 export interface LiveSnapshot {
   session: LiveSession;
   drivers: LiveDriver[];
   standings: StandingRow[];
   tyres: Record<string, Tyre>;
+  stints: StintRow[];
   pit_lane_times: { Driver: string; Lap: number | null; Duration: number | null }[];
   race_control: RaceControlMessage[];
   weather: Record<string, number | string | null> | null;
@@ -106,6 +120,12 @@ export interface LivePositions {
   has_data: boolean;
   cars: { driver: string; x: number; y: number }[];
   outline: [number, number][];
+}
+
+export interface GapSeries {
+  t: number[]; // seconds before the last sample
+  lap: (number | null)[];
+  gaps: Record<string, (number | null)[]>;
 }
 
 export interface Neighbour {
@@ -210,6 +230,10 @@ export const liveClient = {
       `/live/telemetry?drivers=${encodeURIComponent(drivers.join(","))}&seconds=${seconds}`
     ),
   positions: () => request<LivePositions>("/live/positions"),
+  gaps: (drivers: string[], minutes = 30) =>
+    request<GapSeries>(
+      `/live/gaps?drivers=${encodeURIComponent(drivers.join(","))}&minutes=${minutes}`
+    ),
   strategy: (driver: string, netLoss: number) =>
     request<StrategyResponse>(
       `/live/strategy?driver=${encodeURIComponent(driver)}&net_loss=${netLoss}`
@@ -226,4 +250,36 @@ export function placeText(position: number | null, range: [number, number] | nul
 export function teamColour(drivers: LiveDriver[], code: string): string {
   const colour = drivers.find((d) => d.name_acronym === code)?.team_colour;
   return colour && /^#[0-9a-fA-F]{6}$/.test(colour) ? colour : "#6b7280";
+}
+
+/**
+ * How the gap from ``front`` to ``back`` changed over the last ``windowS``
+ * seconds of the gap history, in seconds per lap (``lapS`` per lap).
+ * Negative: ``back`` is closing. Null when either car lacks a gap at either end.
+ */
+export function gapTrend(
+  series: GapSeries | undefined,
+  front: string,
+  back: string,
+  windowS: number,
+  lapS: number | null | undefined
+): number | null {
+  if (!series || !lapS || lapS <= 0) return null;
+  const a = series.gaps[front];
+  const b = series.gaps[back];
+  if (!a || !b || series.t.length < 2) return null;
+  const end = series.t.length - 1;
+  let start = -1;
+  for (let i = 0; i < series.t.length; i += 1) {
+    if (series.t[i] >= -windowS) {
+      start = i;
+      break;
+    }
+  }
+  if (start < 0 || start >= end) return null;
+  const now = b[end] !== null && a[end] !== null ? (b[end] as number) - (a[end] as number) : null;
+  const then = b[start] !== null && a[start] !== null ? (b[start] as number) - (a[start] as number) : null;
+  const span = series.t[end] - series.t[start];
+  if (now === null || then === null || span < lapS / 2) return null;
+  return ((now - then) / span) * lapS;
 }

@@ -50,6 +50,17 @@ export function useLivePositions(active: boolean) {
   });
 }
 
+export function useLiveGaps(active: boolean, drivers: string[], minutes = 30) {
+  return useQuery({
+    queryKey: ["live", "gaps", drivers, minutes],
+    queryFn: () => liveClient.gaps(drivers, minutes),
+    enabled: active,
+    refetchInterval: active ? 2000 : false,
+    staleTime: 0,
+    placeholderData: keepPreviousData,
+  });
+}
+
 export function useLiveStrategy(active: boolean, driver: string | null, netLoss: number) {
   return useQuery({
     queryKey: ["live", "strategy", driver, netLoss],

@@ -27,6 +27,7 @@ from pathlib import Path
 import pandas as pd
 
 from .adapter import SignalRLiveAdapter
+from .history import GapHistory
 
 log = logging.getLogger("f1api.live")
 
@@ -75,8 +76,16 @@ def _stamp(value) -> pd.Timestamp | None:
 class Replay:
     """Feeds a recording into an adapter on a thread, ``speed`` times real time."""
 
-    def __init__(self, adapter: SignalRLiveAdapter, path: Path, speed: float = 1.0, skip_s: float = 0.0):
+    def __init__(
+        self,
+        adapter: SignalRLiveAdapter,
+        path: Path,
+        speed: float = 1.0,
+        skip_s: float = 0.0,
+        history: GapHistory | None = None,
+    ):
         self.adapter = adapter
+        self.history = history
         self.path = path
         self.speed = max(float(speed), 0.1)
         self.skip_s = max(float(skip_s), 0.0)
@@ -124,6 +133,8 @@ class Replay:
             self.adapter.handle_message(topic, payload, stamp)
             if moment is not None:
                 self.clock = moment
+                if self.history is not None:
+                    self.history.maybe_sample(self.adapter, moment)
         self.done = True
 
 
@@ -139,6 +150,17 @@ class LiveService:
         self.adapter = SignalRLiveAdapter()
         self.mode = "off"
         self.replay: Replay | None = None
+        self.history = GapHistory()
+        self._sampler_stop = threading.Event()
+        self._sampler: threading.Thread | None = None
+
+    def _sample_live(self) -> None:
+        """Live: sample the gaps once a second of wall clock (replay samples in its own loop)."""
+        while not self._sampler_stop.wait(1.0):
+            try:
+                self.history.maybe_sample(self.adapter, pd.Timestamp.now(tz="UTC"))
+            except Exception as exc:  # one bad sample must not end the history
+                log.warning("Gap sample failed: %s", exc)
 
     def now(self) -> pd.Timestamp:
         """Wall clock live; the replay's recorded moment in replay."""
@@ -148,6 +170,11 @@ class LiveService:
 
     def stop(self) -> None:
         with self.lock:
+            self._sampler_stop.set()
+            if self._sampler is not None:
+                self._sampler.join(timeout=5)
+                self._sampler = None
+            self.history.clear()
             if self.replay is not None:
                 self.replay.stop()
                 self.replay = None
@@ -160,6 +187,9 @@ class LiveService:
         with self.lock:
             self.stop()
             self.adapter.start_async()
+            self._sampler_stop = threading.Event()
+            self._sampler = threading.Thread(target=self._sample_live, name="gap-sampler", daemon=True)
+            self._sampler.start()
             self.mode = "live"
             log.info("Live feed started")
 
@@ -168,7 +198,7 @@ class LiveService:
             raise FileNotFoundError(f"no recording at {path}")
         with self.lock:
             self.stop()
-            self.replay = Replay(self.adapter, path, speed, skip_s)
+            self.replay = Replay(self.adapter, path, speed, skip_s, history=self.history)
             self.replay.start_async()
             self.mode = "replay"
             log.info("Replaying %s at %sx", path.name, speed)
