@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import asdict
 from pathlib import Path
 
 import pandas as pd
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 
 from . import snapshot
@@ -21,7 +22,36 @@ from .pit_strategy import (
 )
 from .service import BACKEND_DIR, DEFAULT_REPLAY, live_enabled, service
 
-router = APIRouter(prefix="/live", tags=["live"])
+LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
+DEFAULT_ORIGINS = "http://localhost:3000,http://127.0.0.1:3000"
+
+
+def allowed_origins() -> set[str]:
+    raw = os.environ.get("F1_LIVE_ALLOWED_ORIGINS", DEFAULT_ORIGINS)
+    return {origin.strip().rstrip("/") for origin in raw.split(",") if origin.strip()}
+
+
+def local_only(request: Request) -> None:
+    """Only this machine's own frontend may use /live.
+
+    The app answers CORS with ``*``, so without this any page open in the
+    browser could start the feed with your F1TV token or read it. The Host must
+    be a loopback name (blocks DNS rebinding), and a browser's Origin must be
+    the frontend's (``F1_LIVE_ALLOWED_ORIGINS``). Requests with no Origin
+    (curl, scripts on this machine) pass.
+    """
+    host = (request.url.hostname or "").lower()
+    if host not in LOCAL_HOSTS:
+        raise HTTPException(status_code=403, detail="Live timing only answers on localhost")
+    origin = request.headers.get("origin")
+    if origin is not None and origin.rstrip("/") not in allowed_origins():
+        raise HTTPException(
+            status_code=403,
+            detail="This origin may not use live timing (set F1_LIVE_ALLOWED_ORIGINS)",
+        )
+
+
+router = APIRouter(prefix="/live", tags=["live"], dependencies=[Depends(local_only)])
 
 
 def _require_enabled() -> None:
@@ -67,6 +97,7 @@ def start(request: StartRequest) -> dict:
 
 @router.post("/stop")
 def stop() -> dict:
+    _require_enabled()
     service.stop()
     return status()
 

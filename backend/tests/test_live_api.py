@@ -25,7 +25,7 @@ from live.service import DEFAULT_REPLAY, Replay, service  # noqa: E402
 @pytest.fixture
 def client(monkeypatch):
     monkeypatch.setenv("F1_LIVE_ENABLED", "1")
-    return TestClient(main.app)
+    return TestClient(main.app, base_url="http://localhost")
 
 
 @pytest.fixture(scope="module")
@@ -46,7 +46,7 @@ def replayed(_fed, client):
 
 def test_live_is_off_unless_enabled(monkeypatch):
     monkeypatch.setenv("F1_LIVE_ENABLED", "0")
-    client = TestClient(main.app)
+    client = TestClient(main.app, base_url="http://localhost")
 
     assert client.get("/live/snapshot").status_code == 403
     assert client.post("/live/start", json={"mode": "live"}).status_code == 403
@@ -137,3 +137,40 @@ def test_a_replay_outside_backend_is_refused(client):
     response = client.post("/live/start", json={"mode": "replay", "file": "../../etc/passwd"})
 
     assert response.status_code == 400
+
+
+class TestOnlyThisMachinesFrontend:
+    """CORS is * for the whole app, so /live checks Host and Origin itself."""
+
+    def test_another_site_cannot_start_the_feed(self, client):
+        response = client.post(
+            "/live/start", json={"mode": "live"}, headers={"Origin": "https://evil.example"}
+        )
+
+        assert response.status_code == 403
+        assert service.mode != "live"
+
+    def test_another_site_cannot_read_it(self, client):
+        response = client.get("/live/status", headers={"Origin": "https://evil.example"})
+
+        assert response.status_code == 403
+
+    def test_a_rebound_hostname_is_refused(self, client):
+        response = client.get("/live/status", headers={"Host": "attacker.example:8000"})
+
+        assert response.status_code == 403
+
+    def test_the_frontend_and_local_tools_are_let_through(self, client):
+        assert client.get("/live/status", headers={"Origin": "http://localhost:3000"}).status_code == 200
+        assert client.get("/live/status", headers={"Host": "127.0.0.1:8000"}).status_code == 200
+        assert client.get("/live/status").status_code == 200  # no Origin: curl, scripts
+
+    def test_stop_needs_live_enabled(self, monkeypatch):
+        monkeypatch.setenv("F1_LIVE_ENABLED", "0")
+
+        assert TestClient(main.app, base_url="http://localhost").post("/live/stop").status_code == 403
+
+    def test_the_rest_of_the_api_is_unchanged(self, client):
+        response = client.get("/", headers={"Origin": "https://evil.example"})
+
+        assert response.status_code == 200
