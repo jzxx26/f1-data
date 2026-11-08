@@ -22,12 +22,11 @@ export const metadata: Metadata = {
   },
   description:
     "A live motorsport telemetry dashboard powered by FastF1, featuring race-day insights, speed traces, and historical archives.",
-  metadataBase: new URL("https://f1-live-dashboard.vercel.app"),
+  metadataBase: new URL("http://localhost:3000"),
   openGraph: {
     title: "Apex F1 Live",
     description:
       "Live telemetry, tyre strategy, and race archive insights for Formula 1 fans and strategists.",
-    url: "https://f1-live-dashboard.vercel.app",
     siteName: "Apex F1 Live",
     type: "website",
     images: [

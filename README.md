@@ -64,8 +64,8 @@ The **Live** page (`/live`) shows the timing tower, tyres, car telemetry, a trac
 and a pit **Strategy** card while a session is on air. The backend holds one connection to F1's
 SignalR Core live timing hub; the browser only polls your backend, never F1.
 
-**Run it on your own machine.** Live is off unless `F1_LIVE_ENABLED=1`, so a public deployment
-(Railway) does not serve it, or your F1TV access.
+**Run it on your own machine.** Live is off unless `F1_LIVE_ENABLED=1`, and the backend should
+listen only on localhost (uvicorn's default), so nothing else can use your F1TV access.
 
 ```bash
 cd backend
@@ -80,7 +80,7 @@ ENV
 Then `npm run dev` and open `http://localhost:3000/live`. Press **Go live** during a session.
 
 - **F1TV token.** Car telemetry (`CarData.z`) and positions (`Position.z`) need it; timing, tyres,
-  race control and pit times do not. It stays in `backend/.env` (git- and docker-ignored), is sent
+  race control and pit times do not. It stays in `backend/.env` (git-ignored), is sent
   only to F1 as a Bearer header and is never returned by the API. The page shows when it expires;
   the token lasts a few days, so renew it before a race weekend.
 - **Local only.** `/live` answers only on localhost and only to your frontend's origin (`http://localhost:3000` by default; set `F1_LIVE_ALLOWED_ORIGINS` for another port), since the API allows any origin for the archive endpoints.

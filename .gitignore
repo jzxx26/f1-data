@@ -52,3 +52,6 @@ backend/.venv/
 backend/recordings/
 __pycache__/
 .pytest_cache/
+
+# FastF1 HTTP cache (local)
+backend/cache/fastf1_http_cache.sqlite
