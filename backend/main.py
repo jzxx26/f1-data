@@ -32,6 +32,9 @@ app = FastAPI(title="F1 Telemetry API", version="1.0.0")
 from live.service import load_env  # noqa: E402
 
 load_env()
+from fastf1_auth import use_f1tv_token_for_fastf1  # noqa: E402
+
+log.info(use_f1tv_token_for_fastf1())
 from live.api import router as live_router  # noqa: E402
 
 app.include_router(live_router)
