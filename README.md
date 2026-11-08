@@ -95,6 +95,17 @@ Then `npm run dev` and open `http://localhost:3000/live`. Press **Go live** duri
   point, not a figure for the circuit). The race's observed pit lane times are shown for reference
   only. Margins to the next place and ±2 s scenarios come from the same calculation.
 
+- **One-screen dashboard.** `/live` is a grid that always fits the window: timing tower, pit rejoin,
+  driver focus, telemetry, track map, gap chart, tyre stints, race control and weather. Press
+  **Edit** to add, remove, drag and resize panels (locked otherwise, so a stray click mid-race moves
+  nothing), pick a preset (Race, Strategy, Driver focus) or save your own; layouts are kept in the
+  browser. Pick the focused driver in the top bar or by clicking the tower.
+- **Recordings.** Go live records every session to `backend/recordings/<session>/` (git-ignored;
+  `F1_LIVE_AUTORECORD=0` turns it off). A race with car data is a few hundred MB. Any recording
+  can be replayed from the top bar, with pause, speed and jump-to-lap.
+- **Archive and your token.** F1's timing archive now needs the F1TV token too: the backend hands
+  it to FastF1 at startup, so archive sessions not already cached load only while it is valid.
+
 Backend tests: `cd backend && .venv/bin/python -m pytest tests`.
 
 The feed client, state merging, parsers and strategy maths in `backend/live/` are adapted from
