@@ -72,10 +72,24 @@ export function useLiveStrategy(active: boolean, driver: string | null, netLoss:
   });
 }
 
+export function useLiveRecordings(enabled: boolean) {
+  return useQuery({
+    queryKey: ["live", "recordings"],
+    queryFn: liveClient.recordings,
+    enabled,
+    refetchInterval: enabled ? 30_000 : false,
+    staleTime: 10_000,
+  });
+}
+
 export function useLiveControls() {
   const client = useQueryClient();
   const refresh = () => client.invalidateQueries({ queryKey: ["live"] });
   const start = useMutation({ mutationFn: liveClient.start, onSuccess: refresh });
   const stop = useMutation({ mutationFn: liveClient.stop, onSuccess: refresh });
-  return { start, stop };
+  const pause = useMutation({ mutationFn: liveClient.pause, onSuccess: refresh });
+  const resume = useMutation({ mutationFn: liveClient.resume, onSuccess: refresh });
+  const speed = useMutation({ mutationFn: liveClient.speed, onSuccess: refresh });
+  const seek = useMutation({ mutationFn: liveClient.seek, onSuccess: refresh });
+  return { start, stop, pause, resume, speed, seek };
 }

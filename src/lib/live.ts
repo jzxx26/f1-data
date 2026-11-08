@@ -15,11 +15,23 @@ export interface LiveStatus {
   replay?: {
     file: string;
     speed: number;
+    paused: boolean;
+    done: boolean;
     clock: string | null;
     start: string | null;
     end: string | null;
-    done: boolean;
+    lap: number | null;
+    laps: [number, number] | null;
   };
+  recording?: { folder: string; messages: number } | null;
+  recording_error?: string;
+}
+
+export interface Recording {
+  name: string;
+  label: string;
+  size_mb: number;
+  modified: number;
 }
 
 export interface LiveSession {
@@ -217,13 +229,28 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const liveClient = {
   status: () => request<LiveStatus>("/live/status"),
-  start: (body: { mode: "live" | "replay"; speed?: number; skip_s?: number }) =>
+  start: (body: { mode: "live" | "replay"; speed?: number; skip_s?: number; file?: string }) =>
     request<LiveStatus>("/live/start", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }),
   stop: () => request<LiveStatus>("/live/stop", { method: "POST" }),
+  recordings: () => request<{ recordings: Recording[]; default: string }>("/live/recordings"),
+  pause: () => request<LiveStatus>("/live/replay/pause", { method: "POST" }),
+  resume: () => request<LiveStatus>("/live/replay/resume", { method: "POST" }),
+  speed: (speed: number) =>
+    request<LiveStatus>("/live/replay/speed", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ speed }),
+    }),
+  seek: (lap: number) =>
+    request<LiveStatus>("/live/replay/seek", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lap }),
+    }),
   snapshot: () => request<LiveSnapshot>("/live/snapshot"),
   telemetry: (drivers: string[], seconds = 60) =>
     request<LiveTelemetry>(

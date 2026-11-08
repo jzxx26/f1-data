@@ -1,7 +1,7 @@
 """The /live endpoints, fed the recorded 2026 Sao Paulo race through the live ingest path.
 
 The recording (tests/fixtures/sao_paulo_2026_race.jsonl.gz) is the raw SignalR
-Core stream from lap 34 to lap 57, recorded without a token, so it has timing,
+Core stream from lap 38 to lap 57, recorded without a token, so it has timing,
 tyres, race control and pit lane times but no car telemetry or positions.
 """
 

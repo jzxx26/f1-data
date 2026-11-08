@@ -20,7 +20,14 @@ from .pit_strategy import (
     observed_pit_lane_median,
     stale_warning,
 )
-from .service import BACKEND_DIR, DEFAULT_REPLAY, live_enabled, service
+from .service import (
+    BACKEND_DIR,
+    DEFAULT_REPLAY,
+    STREAM_FILE,
+    live_enabled,
+    recordings_dir,
+    service,
+)
 
 LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
 DEFAULT_ORIGINS = "http://localhost:3000,http://127.0.0.1:3000"
@@ -67,7 +74,26 @@ class StartRequest(BaseModel):
     mode: str = "live"  # "live" or "replay"
     speed: float = 1.0
     skip_s: float = 0.0
-    file: str | None = None  # a recording under backend/ (default: the 2026 Sao Paulo race)
+    # a recording from /live/recordings (default: the 2026 Sao Paulo race)
+    file: str | None = None
+
+
+class SpeedRequest(BaseModel):
+    speed: float
+
+
+class SeekRequest(BaseModel):
+    lap: int
+
+
+def _recording_path(name: str) -> Path:
+    """A recording named by /live/recordings, kept inside backend/ or the recordings folder."""
+    roots = [recordings_dir().resolve(), BACKEND_DIR.resolve()]
+    for root in roots:
+        path = (root / name).resolve()
+        if any(r == path or r in path.parents for r in roots) and path.exists():
+            return path
+    raise HTTPException(status_code=400, detail="Unknown recording; pick one from /live/recordings")
 
 
 @router.get("/status")
@@ -81,17 +107,49 @@ def start(request: StartRequest) -> dict:
     if request.mode == "live":
         service.start_live()
     elif request.mode == "replay":
-        path = DEFAULT_REPLAY
-        if request.file:
-            path = (BACKEND_DIR / request.file).resolve()
-            if BACKEND_DIR not in path.parents:
-                raise HTTPException(status_code=400, detail="The recording must be inside backend/")
+        path = _recording_path(request.file) if request.file else DEFAULT_REPLAY
         try:
             service.start_replay(path, request.speed, request.skip_s)
         except FileNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
     else:
         raise HTTPException(status_code=400, detail="mode is 'live' or 'replay'")
+    return status()
+
+
+def _replay():
+    _require_enabled()
+    if service.mode != "replay" or service.replay is None:
+        raise HTTPException(status_code=409, detail="No replay is running")
+    return service.replay
+
+
+@router.post("/replay/pause")
+def replay_pause() -> dict:
+    _replay().pause()
+    return status()
+
+
+@router.post("/replay/resume")
+def replay_resume() -> dict:
+    _replay().resume()
+    return status()
+
+
+@router.post("/replay/speed")
+def replay_speed(request: SpeedRequest) -> dict:
+    if not 0.1 <= request.speed <= 120:
+        raise HTTPException(status_code=400, detail="speed is between 0.1 and 120")
+    _replay().set_speed(request.speed)
+    return status()
+
+
+@router.post("/replay/seek")
+def replay_seek(request: SeekRequest) -> dict:
+    try:
+        _replay().seek_lap(request.lap)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return status()
 
 
@@ -173,14 +231,35 @@ def get_strategy(driver: str, net_loss: float = Query(DEFAULT_NET_PIT_LOSS, ge=0
     )
 
 
-def recordings() -> list[str]:
-    """Recordings under backend/ a replay can start from."""
-    return sorted(
-        str(p.relative_to(BACKEND_DIR))
-        for pattern in ("*.jsonl", "*.jsonl.gz")
-        for p in BACKEND_DIR.rglob(pattern)
-        if ".venv" not in p.parts
+def recordings() -> list[dict]:
+    """Recordings a replay can start from: Go-live session folders (newest first), then the fixtures."""
+    found: list[dict] = []
+    root = recordings_dir()
+    if root.is_dir():
+        for folder in root.iterdir():
+            stream = next((folder / n for n in (STREAM_FILE, STREAM_FILE + ".gz") if (folder / n).is_file()), None)
+            if stream is None:
+                continue
+            found.append(
+                {
+                    "name": folder.name,  # looked up inside the recordings folder
+                    "label": folder.name,
+                    "size_mb": round(stream.stat().st_size / 1e6, 1),
+                    "modified": stream.stat().st_mtime,
+                }
+            )
+    found.sort(key=lambda r: r["modified"], reverse=True)
+    fixtures = sorted((BACKEND_DIR / "tests" / "fixtures").glob("*.jsonl*"))
+    found.extend(
+        {
+            "name": str(p.relative_to(BACKEND_DIR)),
+            "label": p.name.split(".")[0],
+            "size_mb": round(p.stat().st_size / 1e6, 1),
+            "modified": p.stat().st_mtime,
+        }
+        for p in fixtures
     )
+    return found
 
 
 @router.get("/recordings")

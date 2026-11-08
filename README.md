@@ -84,7 +84,7 @@ Then `npm run dev` and open `http://localhost:3000/live`. Press **Go live** duri
   only to F1 as a Bearer header and is never returned by the API. The page shows when it expires;
   the token lasts a few days, so renew it before a race weekend.
 - **Local only.** `/live` answers only on localhost and only to your frontend's origin (`http://localhost:3000` by default; set `F1_LIVE_ALLOWED_ORIGINS` for another port), since the API allows any origin for the archive endpoints.
-- **Replay.** "Replay São Paulo 2026" streams a recording of that race (laps 34–57, timing only:
+- **Replay.** "Replay São Paulo 2026" streams a recording of that race (laps 38–57, timing only:
   it was recorded without a token) through the same ingest path at 1–60x, for trying the page
   between sessions.
 - **Strategy card.** Where the focused car would rejoin if it pitted now, from the live order:

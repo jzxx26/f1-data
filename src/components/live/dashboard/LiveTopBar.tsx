@@ -1,6 +1,6 @@
 "use client";
 
-import { useLiveControls } from "@/hooks/useLive";
+import { useLiveControls, useLiveRecordings } from "@/hooks/useLive";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { PRESETS, WIDGETS, type Layout, type WidgetId } from "./layouts";
@@ -34,8 +34,15 @@ const control =
 
 export function LiveTopBar({ layout, saved, editing, notice, onEditing, onApply, onAdd, onSave, onDelete }: LiveTopBarProps) {
   const { status, snapshot, order, focus, setFocus } = useLiveData();
-  const { start, stop } = useLiveControls();
+  const { start, stop, pause, resume, speed: setReplaySpeed, seek } = useLiveControls();
+  const recordings = useLiveRecordings(Boolean(status?.enabled));
   const [speed, setSpeed] = useState(5);
+  const [file, setFile] = useState("");
+  const replay = status?.mode === "replay" ? status.replay : undefined;
+  const lapOptions = replay?.laps
+    ? Array.from({ length: replay.laps[1] - replay.laps[0] + 1 }, (_, i) => replay.laps![0] + i)
+    : [];
+  const failure = [start, stop, pause, resume, setReplaySpeed, seek].find((m) => m.error)?.error as Error | undefined;
   const [name, setName] = useState("");
   const session = snapshot?.session;
   const stale = session?.data_age_s != null && session.data_age_s > STALE_AFTER_S;
@@ -54,6 +61,15 @@ export function LiveTopBar({ layout, saved, editing, notice, onEditing, onApply,
       >
         {status?.mode === "live" ? "Live" : status?.mode === "replay" ? "Replay" : "Off"}
       </span>
+      {status?.mode === "live" && status.recording ? (
+        <span
+          className="rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-semibold text-red-200"
+          title={`Recording to backend/recordings/${status.recording.folder} (${status.recording.messages} messages)`}
+        >
+          REC
+        </span>
+      ) : null}
+      {status?.recording_error ? <span className="text-[10px] text-red-300">{status.recording_error}</span> : null}
       {session ? (
         <>
           <span className="text-sm font-semibold text-white">{session.gp}</span>
@@ -149,17 +165,66 @@ export function LiveTopBar({ layout, saved, editing, notice, onEditing, onApply,
         </button>
 
         <span className="mx-1 h-4 w-px bg-white/10" />
-        <button type="button" onClick={() => start.mutate({ mode: "live" })} className="rounded-full bg-red-500 px-3 py-1 text-[11px] font-semibold text-white hover:bg-red-400">
-          Go live
-        </button>
-        <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))} aria-label="Replay speed" className={control}>
-          {SPEEDS.map((value) => (
-            <option key={value} value={value} className="bg-[#0a0a0c]">{value}x</option>
-          ))}
-        </select>
-        <button type="button" onClick={() => start.mutate({ mode: "replay", speed })} className={control}>
-          Replay
-        </button>
+        {replay ? (
+          <>
+            <button
+              type="button"
+              onClick={() => (replay.paused ? resume.mutate() : pause.mutate())}
+              className={cn(control, "min-w-14")}
+            >
+              {replay.paused ? "Play" : "Pause"}
+            </button>
+            <select
+              value={replay.speed}
+              onChange={(e) => setReplaySpeed.mutate(Number(e.target.value))}
+              aria-label="Replay speed"
+              className={control}
+            >
+              {SPEEDS.map((value) => (
+                <option key={value} value={value} className="bg-[#0a0a0c]">{value}x</option>
+              ))}
+            </select>
+            {lapOptions.length ? (
+              <select
+                value={replay.lap ?? ""}
+                onChange={(e) => seek.mutate(Number(e.target.value))}
+                aria-label="Jump to lap"
+                className={control}
+                title="Jump to lap"
+              >
+                {replay.lap == null ? <option value="" className="bg-[#0a0a0c]">Lap</option> : null}
+                {lapOptions.map((lap) => (
+                  <option key={lap} value={lap} className="bg-[#0a0a0c]">Lap {lap}</option>
+                ))}
+              </select>
+            ) : null}
+            {replay.done ? <span className="text-[10px] text-white/45">end of recording</span> : null}
+          </>
+        ) : (
+          <>
+            <button type="button" onClick={() => start.mutate({ mode: "live" })} className="rounded-full bg-red-500 px-3 py-1 text-[11px] font-semibold text-white hover:bg-red-400">
+              Go live
+            </button>
+            <select value={file} onChange={(e) => setFile(e.target.value)} aria-label="Recording" className={cn(control, "max-w-48")}>
+              <option value="" className="bg-[#0a0a0c]">São Paulo 2026 (sample)</option>
+              {(recordings.data?.recordings ?? [])
+                .filter((r) => r.name !== recordings.data?.default)
+                .map((r) => (
+                  <option key={r.name} value={r.name} className="bg-[#0a0a0c]">
+                    {r.label} · {r.size_mb} MB
+                  </option>
+                ))}
+            </select>
+            <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))} aria-label="Replay speed" className={control}>
+              {SPEEDS.map((value) => (
+                <option key={value} value={value} className="bg-[#0a0a0c]">{value}x</option>
+              ))}
+            </select>
+            <button type="button" onClick={() => start.mutate({ mode: "replay", speed, file: file || undefined })} className={control}>
+              Replay
+            </button>
+          </>
+        )}
         <button type="button" onClick={() => stop.mutate()} className={control}>
           Stop
         </button>
@@ -175,7 +240,7 @@ export function LiveTopBar({ layout, saved, editing, notice, onEditing, onApply,
           </span>
         ) : null}
       </div>
-      {start.error ? <span className="w-full text-[11px] text-red-300">{(start.error as Error).message}</span> : null}
+      {failure ? <span className="w-full text-[11px] text-red-300">{failure.message}</span> : null}
     </div>
   );
 }
