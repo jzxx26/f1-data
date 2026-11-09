@@ -249,6 +249,36 @@ export interface PaceModel {
   }[];
 }
 
+export interface Chase {
+  chaser: string;
+  leader: string;
+  gap: number | null;
+  /** Seconds the chaser gains per lap (negative: it loses). */
+  per_lap: number | null;
+  projected: { lap: number; gap: number }[];
+  mom_lap: number | null;
+  level_lap: number | null;
+}
+
+/** /live/projection: the next laps for one driver, from the pace model. */
+export interface Projection {
+  driver: string;
+  lap: number;
+  total_laps: number | null;
+  model_status: "ok" | "not_enough_laps";
+  mom_range_s: number;
+  reason?: string;
+  ahead: Chase | null;
+  behind: Chase | null;
+  pit_window: {
+    laps_left: number | null;
+    net_loss: number;
+    options: { compound: string; best_lap: number; gain_vs_stay: number }[];
+    stay_out_wins?: boolean | null;
+    reason: string | null;
+  } | null;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (!BASE) {
     throw new Error("NEXT_PUBLIC_FASTF1_BASE_URL is not set: point it at your local backend.");
@@ -302,6 +332,8 @@ export const liveClient = {
       `/live/gaps?drivers=${encodeURIComponent(drivers.join(","))}&minutes=${minutes}`
     ),
   pace: () => request<PaceModel>("/live/pace"),
+  projection: (driver: string, netLoss: number) =>
+    request<Projection>(`/live/projection?driver=${encodeURIComponent(driver)}&net_loss=${netLoss}`),
   pitLossHistory: (event: string, year: number) =>
     request<PitLossHistory>(`/live/pit-loss/history?event=${encodeURIComponent(event)}&year=${year}`),
   strategy: (driver: string, netLoss: number) =>

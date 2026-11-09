@@ -7,6 +7,7 @@ import { StrategyCard } from "@/components/live/StrategyCard";
 import { TrackMapCard } from "@/components/live/TrackMapCard";
 import { DriverFocus } from "@/components/live/widgets/DriverFocus";
 import { GapChart } from "@/components/live/widgets/GapChart";
+import { NextLaps } from "@/components/live/widgets/NextLaps";
 import { RacePace } from "@/components/live/widgets/RacePace";
 import { TyreStints } from "@/components/live/widgets/TyreStints";
 import { Weather } from "@/components/live/widgets/Weather";
@@ -60,6 +61,8 @@ export function WidgetBody({ id }: { id: WidgetId }) {
       return <TyreStints />;
     case "weather":
       return <Weather />;
+    case "nextLaps":
+      return <NextLaps data={data.projection} focus={data.focus} />;
     case "pace":
       return <RacePace data={data.pace} drivers={snapshot.drivers} focus={data.focus} onFocus={data.setFocus} />;
   }

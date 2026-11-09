@@ -109,6 +109,12 @@ Then `npm run dev` and open `http://localhost:3000/live`. Press **Go live** duri
   stops make it separable from wear (until then wear includes it). Checked on Las Vegas 2024/2025
   and São Paulo 2025: fuel 0.03–0.08 s/lap, pace order close to the result.
 
+- **Next laps panel.** For the focused car, from the pace model: the gap to the car ahead and
+  behind over the next five laps, the lap the chaser gets within 1 s (the 2026 overtake-mode
+  range) and the lap it would draw level, and whether one more stop finishes the race sooner
+  than staying out (best lap and compound, using the net pit loss on the slider). Straight-line
+  wear, no traffic or safety car; reaching 1 s is not a pass.
+
 - **One-screen dashboard.** `/live` is a grid that always fits the window: timing tower, pit rejoin,
   driver focus, telemetry, track map, gap chart, tyre stints, race control and weather. Press
   **Edit** to add, remove, drag and resize panels (locked otherwise, so a stray click mid-race moves

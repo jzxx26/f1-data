@@ -83,6 +83,16 @@ export function useLivePace(active: boolean) {
   });
 }
 
+export function useLiveProjection(active: boolean, driver: string | null, netLoss: number) {
+  return useQuery({
+    queryKey: ["live", "projection", driver, netLoss],
+    queryFn: () => liveClient.projection(driver as string, netLoss),
+    enabled: active && Boolean(driver),
+    refetchInterval: active ? 5_000 : false,
+    placeholderData: keepPreviousData,
+  });
+}
+
 /** Past races at this circuit: fetched once per event (the backend caches it on disk). */
 export function usePitLossHistory(active: boolean, event: string | undefined, year: number | null | undefined) {
   return useQuery({

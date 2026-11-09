@@ -312,6 +312,7 @@ def fit_pace(table: pd.DataFrame, traffic_s: float = TRAFFIC_S) -> dict:
         recent = own.tail(RECENT_LAPS)["Residual"]
         row = {
             "driver": d,
+            "pace_s": round(pace[d], 3),
             "pace_delta": round(pace[d] - best, 3),
             "clean_laps": int(len(own)),
             "recent_vs_model": round(float(recent.mean()), 3) if len(recent) >= 3 else None,

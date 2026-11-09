@@ -3,6 +3,7 @@
 import {
   useLiveGaps,
   useLivePace,
+  useLiveProjection,
   useLivePositions,
   useLiveSnapshot,
   useLiveStatus,
@@ -18,6 +19,7 @@ import type {
   LiveTelemetry,
   PaceModel,
   PitLossHistory,
+  Projection,
   StrategyResponse,
 } from "@/lib/live";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
@@ -39,6 +41,7 @@ export interface LiveData {
   /** Net pit loss measured at this circuit in past races. */
   pitLossHistory: { data: PitLossHistory | undefined; loading: boolean };
   pace: PaceModel | undefined;
+  projection: Projection | undefined;
   telemetry: LiveTelemetry | undefined;
   positions: LivePositions | undefined;
   gaps: GapSeries | undefined;
@@ -79,6 +82,7 @@ export function LiveDataProvider({ widgets, children }: { widgets: WidgetId[]; c
   const session = snapshot.data?.session;
   const history = usePitLossHistory(active && shown.has("strategy"), session?.gp, session?.year);
   const pace = useLivePace(active && shown.has("pace"));
+  const projection = useLiveProjection(active && shown.has("nextLaps"), focus, netLoss);
   const telemetry = useLiveTelemetry(active && shown.has("telemetry"), compare);
   const positions = useLivePositions(active && shown.has("map"));
   const gapDrivers = useMemo(() => {
@@ -106,6 +110,7 @@ export function LiveDataProvider({ widgets, children }: { widgets: WidgetId[]; c
     },
     pitLossHistory: { data: history.data, loading: history.isLoading },
     pace: pace.data,
+    projection: projection.data,
     telemetry: telemetry.data,
     positions: positions.data,
     gaps: gaps.data,

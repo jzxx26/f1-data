@@ -14,6 +14,7 @@ from . import snapshot
 from .adapter import LiveDataProcessor as P
 from .circuit_pit_loss import historical_net_loss
 from .pace import TRAFFIC_S, fit_pace, live_lap_table
+from .projection import MOM_RANGE_S, neighbours, pit_window
 from .pit_loss import DEFAULT_NET_PIT_LOSS, NET_PIT_LOSS_NOTE
 from .pit_strategy import (
     driver_summary,
@@ -238,12 +239,31 @@ def get_strategy(driver: str, net_loss: float = Query(DEFAULT_NET_PIT_LOSS, ge=0
 def get_pace(traffic_s: float = Query(TRAFFIC_S, ge=0, le=5)) -> dict:
     """Clean-lap race pace: degradation per compound, fuel effect, underlying pace per driver."""
     _require_enabled()
-    adapter = service.adapter
+    return snapshot.clean(_pace_model(service.adapter, traffic_s))
+
+
+def _pace_model(adapter, traffic_s: float = TRAFFIC_S) -> dict:
     with adapter._buffer_lock:
         laps, pits, track = list(adapter.lap_history), list(adapter.pit_events), list(adapter.track_timeline)
     acronyms = P.acronyms_from_state(adapter.state.get("DriverList"))
-    table = live_lap_table(laps, pits, track, acronyms)
-    return snapshot.clean(fit_pace(table, traffic_s))
+    return fit_pace(live_lap_table(laps, pits, track, acronyms), traffic_s)
+
+
+@router.get("/projection")
+def get_projection(driver: str, net_loss: float = Query(DEFAULT_NET_PIT_LOSS, ge=0, le=90)) -> dict:
+    """The next laps for ``driver``: gaps to the cars around, catch ETA, and the pit window."""
+    _require_enabled()
+    adapter = service.adapter
+    model = _pace_model(adapter)
+    state = snapshot.build(adapter, service.now())
+    session = state["session"]
+    lap = max((session.get("current_lap") or 1) - 1, 0)  # laps the leader has completed
+    total = session.get("total_laps")
+    base = {"driver": driver, "lap": lap, "total_laps": total, "model_status": model["status"], "mom_range_s": MOM_RANGE_S}
+    if model["status"] != "ok":
+        return snapshot.clean({**base, "reason": model.get("reason"), "ahead": None, "behind": None, "pit_window": None})
+    around = neighbours(model, pd.DataFrame(state["standings"]), driver, lap, total)
+    return snapshot.clean({**base, **around, "pit_window": pit_window(model, driver, lap, total, net_loss)})
 
 
 @router.get("/pit-loss/history")
