@@ -101,6 +101,14 @@ Then `npm run dev` and open `http://localhost:3000/live`. Press **Go live** duri
   circuit loads three races (a few seconds with the cache, longer without); the answer is kept in
   `backend/cache/circuit_pit_loss.json`. It needs the F1TV token too (the archive needs it).
 
+- **Race pace panel.** One least-squares model over the race's clean laps (green all lap, no stop,
+  not lap 1, over 1.5 s behind the car ahead): lap time = driver pace + compound offset + wear per
+  lap of tyre age + fuel effect per lap. It ranks drivers by underlying pace (free of tyre age,
+  compound and fuel), shows wear per compound, and marks cars whose last laps run quicker or
+  slower than the model expects. The fuel effect is measured, not assumed; it is shown only once
+  stops make it separable from wear (until then wear includes it). Checked on Las Vegas 2024/2025
+  and São Paulo 2025: fuel 0.03–0.08 s/lap, pace order close to the result.
+
 - **One-screen dashboard.** `/live` is a grid that always fits the window: timing tower, pit rejoin,
   driver focus, telemetry, track map, gap chart, tyre stints, race control and weather. Press
   **Edit** to add, remove, drag and resize panels (locked otherwise, so a stray click mid-race moves

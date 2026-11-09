@@ -13,7 +13,8 @@ export type WidgetId =
   | "gaps"
   | "tyres"
   | "raceControl"
-  | "weather";
+  | "weather"
+  | "pace";
 
 export interface WidgetSpec {
   id: WidgetId;
@@ -32,6 +33,7 @@ export const WIDGETS: Record<WidgetId, WidgetSpec> = {
   gaps: { id: "gaps", title: "Gap chart", description: "Gap to the leader over time", defaultSize: { w: 4, h: 7 }, minSize: { w: 3, h: 4 } },
   tyres: { id: "tyres", title: "Tyre stints", description: "Every car's stints and compounds", defaultSize: { w: 5, h: 7 }, minSize: { w: 3, h: 4 } },
   raceControl: { id: "raceControl", title: "Race control", description: "Flags, penalties, messages", defaultSize: { w: 4, h: 6 }, minSize: { w: 2, h: 3 } },
+  pace: { id: "pace", title: "Race pace", description: "Underlying pace, tyre wear and fuel effect from clean laps", defaultSize: { w: 4, h: 8 }, minSize: { w: 3, h: 4 } },
   weather: { id: "weather", title: "Weather", description: "Air, track, wind, rain", defaultSize: { w: 3, h: 4 }, minSize: { w: 2, h: 3 } },
 };
 

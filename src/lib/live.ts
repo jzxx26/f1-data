@@ -226,6 +226,29 @@ export interface PitLossHistory {
   method: string;
 }
 
+/** /live/pace: the clean-lap race-pace model (degradation, fuel, underlying pace). */
+export interface PaceModel {
+  status: "ok" | "not_enough_laps";
+  reason?: string;
+  laps_total: number;
+  laps_used: number;
+  traffic_s: number;
+  method: string;
+  sigma: number | null;
+  fuel: { identified: boolean; s_per_lap: number | null } | null;
+  offsets_identified?: boolean;
+  compounds: { compound: string; deg_s_per_lap: number; offset_s: number | null; laps: number }[];
+  drivers: {
+    driver: string;
+    pace_delta: number;
+    clean_laps: number;
+    recent_vs_model: number | null;
+    compound: string | null;
+    tyre_age: number | null;
+    expected_lap: number | null;
+  }[];
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (!BASE) {
     throw new Error("NEXT_PUBLIC_FASTF1_BASE_URL is not set: point it at your local backend.");
@@ -278,6 +301,7 @@ export const liveClient = {
     request<GapSeries>(
       `/live/gaps?drivers=${encodeURIComponent(drivers.join(","))}&minutes=${minutes}`
     ),
+  pace: () => request<PaceModel>("/live/pace"),
   pitLossHistory: (event: string, year: number) =>
     request<PitLossHistory>(`/live/pit-loss/history?event=${encodeURIComponent(event)}&year=${year}`),
   strategy: (driver: string, netLoss: number) =>

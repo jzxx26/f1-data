@@ -11,7 +11,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 
 from . import snapshot
+from .adapter import LiveDataProcessor as P
 from .circuit_pit_loss import historical_net_loss
+from .pace import TRAFFIC_S, fit_pace, live_lap_table
 from .pit_loss import DEFAULT_NET_PIT_LOSS, NET_PIT_LOSS_NOTE
 from .pit_strategy import (
     driver_summary,
@@ -230,6 +232,18 @@ def get_strategy(driver: str, net_loss: float = Query(DEFAULT_NET_PIT_LOSS, ge=0
             "session": session,
         }
     )
+
+
+@router.get("/pace")
+def get_pace(traffic_s: float = Query(TRAFFIC_S, ge=0, le=5)) -> dict:
+    """Clean-lap race pace: degradation per compound, fuel effect, underlying pace per driver."""
+    _require_enabled()
+    adapter = service.adapter
+    with adapter._buffer_lock:
+        laps, pits, track = list(adapter.lap_history), list(adapter.pit_events), list(adapter.track_timeline)
+    acronyms = P.acronyms_from_state(adapter.state.get("DriverList"))
+    table = live_lap_table(laps, pits, track, acronyms)
+    return snapshot.clean(fit_pace(table, traffic_s))
 
 
 @router.get("/pit-loss/history")

@@ -338,6 +338,11 @@ class SignalRLiveAdapter:
         # a race's stops; they are kept here, one row per (driver, lap).
         self.pit_history: list[dict] = []
         self._pit_keys: set[tuple[str, str]] = set()
+        # For the pace model: when each car entered and left the pit lane, and
+        # every track status change, so a lap can be checked for a stop or a
+        # flag anywhere inside it, not just at the line.
+        self.pit_events: list[dict] = []
+        self.track_timeline: list[tuple[str | None, str]] = []
         self._data_buffer: dict[str, list[dict]] = defaultdict(list)
         # The client runs on its own thread while Streamlit polls from the
         # script thread: without this, trimming a buffer shifted the reader's
@@ -382,6 +387,8 @@ class SignalRLiveAdapter:
         if topic in STATE_TOPICS:
             if topic == "TimingData":
                 self._record_lap_progress(payload, timestamp)
+            elif topic == "TrackStatus":
+                self._record_track_status(payload, timestamp)
             elif topic == "PitLaneTimeCollection":
                 self._record_pit_times(payload, timestamp)
             self.state.update(topic, payload)
@@ -437,6 +444,8 @@ class SignalRLiveAdapter:
             self._lap_counter.clear()
             self.pit_history.clear()
             self._pit_keys.clear()
+            self.pit_events.clear()
+            self.track_timeline.clear()
             self._data_buffer.clear()
             self._ingested += 1
 
@@ -496,6 +505,10 @@ class SignalRLiveAdapter:
             if not isinstance(line, dict):
                 continue
             driver = str(number)
+            for flag, kind in (("InPit", "in"), ("PitOut", "out")):
+                if line.get(flag) is True:
+                    with self._buffer_lock:
+                        self.pit_events.append({"driver_number": driver, "kind": kind, "Utc": timestamp})
             laps = line.get("NumberOfLaps")
             if laps is not None:
                 with contextlib.suppress(TypeError, ValueError):
@@ -518,8 +531,32 @@ class SignalRLiveAdapter:
                         # When the lap ended: the boundary live telemetry is
                         # segmented at (LIVE-13).
                         "Utc": timestamp,
+                        **self._lap_context(driver, line),
                     }
                 )
+
+    def _lap_context(self, driver: str, line: dict) -> dict:
+        """Tyre, position and gap ahead as the lap ends, for the pace model."""
+        held = ((self.state.get("TimingData") or {}).get("Lines") or {}).get(driver) or {}
+        interval = line.get("IntervalToPositionAhead") or held.get("IntervalToPositionAhead") or {}
+        stint_state = self.state.get("TyreStintSeries") or LiveDataProcessor.stints_from_timing_app(
+            self.state.get("TimingAppData")
+        )
+        stints = [s for s in as_list((stint_state.get("Stints") or {}).get(driver)) if isinstance(s, dict)]
+        current = stints[-1] if stints else {}
+        return {
+            "Position": line.get("Position") or held.get("Position"),
+            "IntervalAhead": interval.get("Value") if isinstance(interval, dict) else interval,
+            "Stint": len(stints) or None,
+            "Compound": str(current["Compound"]).upper() if current.get("Compound") else None,
+            "TyreAge": current.get("TotalLaps"),
+        }
+
+    def _record_track_status(self, payload: Any, timestamp: str | None) -> None:
+        status = payload.get("Status") if isinstance(payload, dict) else None
+        if status is not None:
+            with self._buffer_lock:
+                self.track_timeline.append((timestamp, str(status)))
 
     def _record_pit_times(self, payload: Any, timestamp: str | None = None) -> None:
         """Keep each announced pit lane time: ``{"PitTimes": {"44": {"Duration": "24.5", "Lap": "38"}}}``.
@@ -562,6 +599,7 @@ class SignalRLiveAdapter:
         self._record("record_snapshot", snapshot)
         self.state.seed({k: v for k, v in snapshot.items() if k in STATE_TOPICS})
         self._record_pit_times(snapshot.get("PitLaneTimeCollection"))
+        self._record_track_status(snapshot.get("TrackStatus"), None)  # None: in force since before we joined
         # Joining mid-session: the lap counters come from the snapshot, or the
         # next LastLapTime would have no lap number to be filed under.
         timing = snapshot.get("TimingData")
