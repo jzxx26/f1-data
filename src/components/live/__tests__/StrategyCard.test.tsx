@@ -102,3 +102,31 @@ describe("placeText", () => {
     expect(placeText(null, null)).toBe("–");
   });
 });
+
+describe("pit loss from past races", () => {
+  const history = {
+    event: "Las Vegas Grand Prix",
+    years: [2023, 2024, 2025],
+    overall: { median: 22.4, p25: 21.5, p75: 24.4, stops: 69 },
+    per_year: [],
+    method: "In-lap + out-lap",
+  };
+
+  it("shows the measured value and sets the slider to it, rounded to the slider's step", () => {
+    const { onNetLoss } = renderCard({ history });
+
+    expect(screen.getByText(/22\.4 s net here 2023–2025, middle half 21\.5–24\.4 s \(69 green-flag stops\)/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Use 22.5 s" }));
+    expect(onNetLoss).toHaveBeenCalledWith(22.5);
+  });
+
+  it("says when it is still measuring, and shows nothing without history", () => {
+    renderCard({ historyLoading: true });
+    expect(screen.getByText(/Measuring net pit loss/)).toBeInTheDocument();
+  });
+
+  it("keeps the slider's default when the circuit has no history", () => {
+    renderCard({ history: { ...history, years: [], overall: null } });
+    expect(screen.queryByText(/History ·/)).not.toBeInTheDocument();
+  });
+});

@@ -38,6 +38,7 @@ export interface LiveSession {
   gp: string;
   country: string | null;
   circuit: string | null;
+  year?: number | null;
   session_name: string;
   session_type: string;
   status: string;
@@ -209,6 +210,22 @@ export interface StrategyResponse {
   stale: string | null;
 }
 
+export interface PitLossSummary {
+  median: number;
+  p25: number;
+  p75: number;
+  stops: number;
+}
+
+/** Net pit loss measured at this circuit in past races (in-lap + out-lap method). */
+export interface PitLossHistory {
+  event: string;
+  years: number[];
+  overall: PitLossSummary | null;
+  per_year: (PitLossSummary & { year: number })[];
+  method: string;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (!BASE) {
     throw new Error("NEXT_PUBLIC_FASTF1_BASE_URL is not set: point it at your local backend.");
@@ -261,6 +278,8 @@ export const liveClient = {
     request<GapSeries>(
       `/live/gaps?drivers=${encodeURIComponent(drivers.join(","))}&minutes=${minutes}`
     ),
+  pitLossHistory: (event: string, year: number) =>
+    request<PitLossHistory>(`/live/pit-loss/history?event=${encodeURIComponent(event)}&year=${year}`),
   strategy: (driver: string, netLoss: number) =>
     request<StrategyResponse>(
       `/live/strategy?driver=${encodeURIComponent(driver)}&net_loss=${netLoss}`

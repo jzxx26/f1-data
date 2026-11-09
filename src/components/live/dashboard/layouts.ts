@@ -24,7 +24,7 @@ export interface WidgetSpec {
 }
 
 export const WIDGETS: Record<WidgetId, WidgetSpec> = {
-  tower: { id: "tower", title: "Timing tower", description: "Order, gaps, tyres", defaultSize: { w: 4, h: 16 }, minSize: { w: 3, h: 5 } },
+  tower: { id: "tower", title: "Timing tower", description: "Order, gaps, tyres", defaultSize: { w: 4, h: 8 }, minSize: { w: 3, h: 5 } },
   strategy: { id: "strategy", title: "Pit rejoin", description: "Where the focused car rejoins if it pits now", defaultSize: { w: 5, h: 10 }, minSize: { w: 3, h: 6 } },
   focus: { id: "focus", title: "Driver focus", description: "The focused car's gaps, tyre and trend", defaultSize: { w: 3, h: 7 }, minSize: { w: 2, h: 4 } },
   telemetry: { id: "telemetry", title: "Telemetry", description: "Speed, throttle, brake vs the car ahead", defaultSize: { w: 6, h: 8 }, minSize: { w: 3, h: 4 } },
@@ -47,14 +47,16 @@ export type Layout = Item[];
 
 export const PRESETS: Record<string, Layout> = {
   Race: [
-    { i: "tower", x: 0, y: 0, w: 4, h: 16 },
+    { i: "tower", x: 0, y: 0, w: 4, h: 8 },
+    { i: "telemetry", x: 0, y: 8, w: 4, h: 8 },
     { i: "gaps", x: 4, y: 0, w: 4, h: 8 },
     { i: "map", x: 8, y: 0, w: 4, h: 8 },
     { i: "focus", x: 4, y: 8, w: 4, h: 8 },
     { i: "raceControl", x: 8, y: 8, w: 4, h: 8 },
   ],
   Strategy: [
-    { i: "tower", x: 0, y: 0, w: 4, h: 16 },
+    { i: "tower", x: 0, y: 0, w: 4, h: 8 },
+    { i: "telemetry", x: 0, y: 8, w: 4, h: 8 },
     { i: "strategy", x: 4, y: 0, w: 8, h: 10 },
     { i: "tyres", x: 4, y: 10, w: 5, h: 6 },
     { i: "weather", x: 9, y: 10, w: 3, h: 6 },

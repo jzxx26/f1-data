@@ -94,6 +94,12 @@ Then `npm run dev` and open `http://localhost:3000/live`. Press **Go live** duri
   on track. The feed does not report net loss, so it is an assumption (20 s is a generic starting
   point, not a figure for the circuit). The race's observed pit lane times are shown for reference
   only. Margins to the next place and ±2 s scenarios come from the same calculation.
+- **Net pit loss from past races.** Next to the slider, the card shows the net loss measured at
+  this circuit in the three seasons before (in-lap + out-lap minus two of the driver's normal
+  green-flag laps; stops under SC/VSC/yellow left out), with the middle half of the stops and a
+  **Use** button. Las Vegas 2023–2025: 22.4 s (21.5–24.4, 69 stops). The first lookup for a
+  circuit loads three races (a few seconds with the cache, longer without); the answer is kept in
+  `backend/cache/circuit_pit_loss.json`. It needs the F1TV token too (the archive needs it).
 
 - **One-screen dashboard.** `/live` is a grid that always fits the window: timing tower, pit rejoin,
   driver focus, telemetry, track map, gap chart, tyre stints, race control and weather. Press

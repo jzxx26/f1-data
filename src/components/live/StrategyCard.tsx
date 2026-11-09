@@ -5,6 +5,7 @@ import {
   placeText,
   teamColour,
   type LiveDriver,
+  type PitLossHistory,
   type StrategyResponse,
 } from "@/lib/live";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,8 @@ interface StrategyCardProps {
   onNetLoss: (seconds: number) => void;
   isFetching?: boolean;
   error?: Error | null;
+  history?: PitLossHistory;
+  historyLoading?: boolean;
 }
 
 const WINDOW = 4;
@@ -55,6 +58,45 @@ export function marginLines(data: StrategyResponse): string[] {
   return lines;
 }
 
+export function HistoryLine({
+  history,
+  loading,
+  netLoss,
+  onUse,
+}: {
+  history?: PitLossHistory;
+  loading?: boolean;
+  netLoss: number;
+  onUse: (seconds: number) => void;
+}) {
+  if (loading) {
+    return <p className="text-[10px] text-white/40">Measuring net pit loss from past races here…</p>;
+  }
+  const overall = history?.overall;
+  if (!history || !overall) return null;
+  const years = history.years.length > 1 ? `${history.years[0]}–${history.years[history.years.length - 1]}` : history.years.join("");
+  const value = Math.round(overall.median * 2) / 2; // the slider moves in 0.5 s steps
+  return (
+    <div
+      className="flex items-center justify-between gap-2 rounded-xl border border-sky-300/15 bg-sky-400/[0.05] px-2.5 py-1.5 text-[11px] text-sky-100/85"
+      title={`${history.method}\n${history.per_year.map((y) => `${y.year}: ${y.median.toFixed(1)} s (${y.stops} stops)`).join("\n")}`}
+    >
+      <span>
+        <span className="font-semibold uppercase tracking-[0.2em] text-sky-200/80">History · </span>
+        {overall.median.toFixed(1)} s net here {years}, middle half {overall.p25.toFixed(1)}–{overall.p75.toFixed(1)} s ({overall.stops} green-flag stops)
+      </span>
+      <button
+        type="button"
+        disabled={netLoss === value}
+        onClick={() => onUse(value)}
+        className="shrink-0 rounded-full border border-sky-300/25 px-2.5 py-0.5 text-sky-100 hover:bg-sky-400/10 disabled:opacity-40"
+      >
+        Use {value.toFixed(1)} s
+      </button>
+    </div>
+  );
+}
+
 export function StrategyCard({
   data,
   drivers,
@@ -65,6 +107,8 @@ export function StrategyCard({
   onNetLoss,
   isFetching,
   error,
+  history,
+  historyLoading,
 }: StrategyCardProps) {
   const prediction = data?.prediction;
   const summary = data?.summary;
@@ -140,6 +184,7 @@ export function StrategyCard({
           ) : null}
 
           <div className="flex flex-col gap-2">
+            <HistoryLine history={history} loading={historyLoading} netLoss={netLoss} onUse={onNetLoss} />
             <label htmlFor="net-loss" className="flex items-center justify-between text-xs text-white/60">
               <span>Estimated net pit loss (s)</span>
               <span className="tabular-nums text-sm font-semibold text-white">{netLoss.toFixed(1)}</span>

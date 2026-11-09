@@ -67,6 +67,13 @@ def extrapolated_remaining(clock: dict, now: pd.Timestamp) -> str | None:
     return f"{total // 3600}:{(total % 3600) // 60:02d}:{total % 60:02d}"
 
 
+def _year(start) -> int | None:
+    try:
+        return int(str(start)[:4])
+    except (TypeError, ValueError):
+        return None
+
+
 def session_info(adapter: SignalRLiveAdapter, now: pd.Timestamp) -> dict:
     """Meeting, session, lap count, clock, flag and heartbeat."""
     si = adapter.state.get("SessionInfo") or {}
@@ -79,6 +86,7 @@ def session_info(adapter: SignalRLiveAdapter, now: pd.Timestamp) -> dict:
         "gp": meeting.get("Name") or "Live session",
         "country": (meeting.get("Country") or {}).get("Name"),
         "circuit": (meeting.get("Circuit") or {}).get("ShortName"),
+        "year": _year(si.get("StartDate")),
         "session_name": si.get("Name") or "",
         "session_type": si.get("Type") or "",
         "status": (adapter.state.get("SessionStatus") or {}).get("Status", ""),

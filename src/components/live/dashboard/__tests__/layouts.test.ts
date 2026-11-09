@@ -129,3 +129,13 @@ describe("storage", () => {
     expect(removeWidget(PRESETS.Race, "map").some((i) => i.i === "map")).toBe(false);
   });
 });
+
+describe("tower and telemetry share the left column", () => {
+  it.each(["Race", "Strategy"])("%s: half-height tower over the telemetry", (name) => {
+    const tower = PRESETS[name].find((item) => item.i === "tower");
+    const telemetry = PRESETS[name].find((item) => item.i === "telemetry");
+    expect(tower).toMatchObject({ x: 0, y: 0, h: ROWS / 2 });
+    expect(telemetry).toMatchObject({ x: 0, y: ROWS / 2, w: tower!.w, h: ROWS / 2 });
+    expect(sanitize(PRESETS[name])).toEqual(PRESETS[name]);
+  });
+});

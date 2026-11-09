@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 
 from . import snapshot
+from .circuit_pit_loss import historical_net_loss
 from .pit_loss import DEFAULT_NET_PIT_LOSS, NET_PIT_LOSS_NOTE
 from .pit_strategy import (
     driver_summary,
@@ -229,6 +230,22 @@ def get_strategy(driver: str, net_loss: float = Query(DEFAULT_NET_PIT_LOSS, ge=0
             "session": session,
         }
     )
+
+
+@router.get("/pit-loss/history")
+def get_pit_loss_history(event: str = "", year: int | None = Query(None, ge=2018, le=2100)) -> dict:
+    """Net pit loss measured at this circuit in the three seasons before ``year``.
+
+    Defaults to the live session's event and season. The first call per circuit
+    loads three races from the archive (tens of seconds); after that it is cached.
+    """
+    _require_enabled()
+    session = snapshot.session_info(service.adapter, service.now())
+    event = event or session.get("gp") or ""
+    year = year or session.get("year")
+    if not event or event == "Live session" or not year:
+        raise HTTPException(409, "No session loaded: start live or a replay first.")
+    return snapshot.clean(historical_net_loss(event, int(year)))
 
 
 def recordings() -> list[dict]:

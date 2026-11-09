@@ -41,6 +41,8 @@ export function WidgetBody({ id }: { id: WidgetId }) {
           onNetLoss={data.setNetLoss}
           isFetching={data.strategy.fetching}
           error={data.strategy.error}
+          history={data.pitLossHistory.data}
+          historyLoading={data.pitLossHistory.loading}
         />
       );
     case "telemetry":

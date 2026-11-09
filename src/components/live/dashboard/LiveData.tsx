@@ -7,6 +7,7 @@ import {
   useLiveStatus,
   useLiveStrategy,
   useLiveTelemetry,
+  usePitLossHistory,
 } from "@/hooks/useLive";
 import type {
   GapSeries,
@@ -14,6 +15,7 @@ import type {
   LiveSnapshot,
   LiveStatus,
   LiveTelemetry,
+  PitLossHistory,
   StrategyResponse,
 } from "@/lib/live";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
@@ -32,6 +34,8 @@ export interface LiveData {
   netLoss: number;
   setNetLoss: (seconds: number) => void;
   strategy: { data: StrategyResponse | undefined; error: Error | null; fetching: boolean };
+  /** Net pit loss measured at this circuit in past races. */
+  pitLossHistory: { data: PitLossHistory | undefined; loading: boolean };
   telemetry: LiveTelemetry | undefined;
   positions: LivePositions | undefined;
   gaps: GapSeries | undefined;
@@ -69,6 +73,8 @@ export function LiveDataProvider({ widgets, children }: { widgets: WidgetId[]; c
   const shown = new Set(widgets);
   const needsStrategy = shown.has("strategy") || shown.has("focus");
   const strategy = useLiveStrategy(active && needsStrategy, focus, netLoss);
+  const session = snapshot.data?.session;
+  const history = usePitLossHistory(active && shown.has("strategy"), session?.gp, session?.year);
   const telemetry = useLiveTelemetry(active && shown.has("telemetry"), compare);
   const positions = useLivePositions(active && shown.has("map"));
   const gapDrivers = useMemo(() => {
@@ -94,6 +100,7 @@ export function LiveDataProvider({ widgets, children }: { widgets: WidgetId[]; c
       error: (strategy.error as Error | null) ?? null,
       fetching: strategy.isFetching,
     },
+    pitLossHistory: { data: history.data, loading: history.isLoading },
     telemetry: telemetry.data,
     positions: positions.data,
     gaps: gaps.data,
